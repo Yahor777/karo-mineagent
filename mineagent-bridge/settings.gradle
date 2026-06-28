@@ -1,0 +1,22 @@
+// Корневой settings multi-loader проекта mineagent-bridge.
+//
+// Структура (см. docs/source-ledger.md Этап 4):
+//   common/   — loader-agnostic библиотека MCP-сервера (JDK + Gson, без
+//               Minecraft-классов). Содержит JSON-RPC, HTTP-сервер на
+//               com.sun.net.httpserver.HttpServer, main-thread enqueue-очередь
+//               и интерфейс BridgeGameAccess, который реализует каждый loader.
+//   fabric/   — Fabric (Loom), MC 1.21.x. ClientModInitializer entrypoint.
+//   neoforge/ — NeoForge (UserDev/ModDevGradle), MC 1.21.1. @Mod(Dist.CLIENT).
+//   forge/    — Forge (ForgeGradle), MC 1.20.1. @Mod, legacy-классы FMLClientSetupEvent.
+//
+// Все три loader-модуля полноценные (правило пользователя: «все версии важны»):
+// каждый компилируется, запускает runClient и поднимает MCP-endpoint в dev.
+// В production ни один loader не регистрирует bridge (registration-level
+// disable — см. entry-11 source-ledger).
+
+rootProject.name = "mineagent-bridge"
+
+include(":common")
+include(":fabric")
+include(":neoforge")
+include(":forge")

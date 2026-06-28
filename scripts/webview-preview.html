@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="../media/mineagent.css">
+  <title>MineAgent Workbench</title>
+</head>
+<body>
+  <div id="app" class="mineagent-shell">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <div class="brand-copy">
+          <span class="brand-name">MineAgent</span>
+          <span class="brand-subtitle">Minecraft mod agent</span>
+        </div>
+      </div>
+      <div class="top-actions">
+        <span class="ctx-ring" id="ctxRing" title="Заполнение context window модели" hidden>
+          <svg class="ctx-ring-svg" viewBox="0 0 24 24" aria-hidden="true">
+            <circle class="ctx-ring-track" cx="12" cy="12" r="10"></circle>
+            <circle class="ctx-ring-fill" cx="12" cy="12" r="10"></circle>
+          </svg>
+          <span class="ctx-ring-label" id="ctxRingLabel">0%</span>
+        </span>
+        <span class="budget-chip" id="budgetChip" title="Потрачено токенов за сессию" hidden>
+          <span class="budget-chip-dot"></span><span id="budgetValue">0</span>
+        </span>
+        <button class="blockbench-chip" id="blockbenchChip" title="Blockbench: отключено" data-status="disconnected" aria-label="Blockbench статус">
+          <span class="blockbench-dot" aria-hidden="true"></span><span class="blockbench-label">Blockbench</span>
+        </button>
+        <button class="blockbench-chip minecraft-chip" id="minecraftChip" title="Minecraft dev bridge: отключено" data-status="disconnected" aria-label="Minecraft dev bridge статус">
+          <span class="blockbench-dot" aria-hidden="true"></span><span class="blockbench-label">Minecraft</span>
+        </button>
+        <button class="icon-button" id="toggleSessions" title="История сессий" aria-label="История сессий"><svg class="icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M8 4.8v3.2l2.2 1.3"/></svg></button>
+        <button class="icon-button" id="toggleSubAgents" title="Sub-агенты" aria-label="Sub-агенты"><svg class="icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="9" height="7.5" rx="1.5"/><path d="M8 5V3"/><circle cx="6.2" cy="8" r="1" fill="currentColor" stroke="none"/><circle cx="9.8" cy="8" r="1" fill="currentColor" stroke="none"/><path d="M6 11h4"/></svg></button>
+        <button class="icon-button" id="toggleKnowledge" title="База знаний" aria-label="База знаний"><svg class="icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4.5c-1-1-3-1.2-4.5-1v8c1.5-.2 3.5 0 4.5 1 1-1 3-1.2 4.5-1v-8c-1.5.2-3.5 0-4.5-1z"/><path d="M8 4.5v8"/></svg></button>
+        <button class="icon-button" id="toggleSkills" title="Скиллы" aria-label="Скиллы"><svg class="icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 2L4 9h3l-1 5 5-7H8l1-5z" fill="currentColor" stroke="none"/></svg></button>
+        <button class="icon-button" id="refreshIndexTop" title="Обновить индекс" aria-label="Обновить индекс"><svg class="icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9"/><path d="M13.5 2.5v3h-3"/></svg></button>
+        <button class="icon-button" data-menu-toggle="settingsMenu" title="Настройки" aria-label="Настройки"><svg class="icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="2.5"/><path d="M8 1.5v2.2M8 12.3v2.2M14.5 8h-2.2M3.7 8H1.5M12.6 3.4l-1.6 1.6M5 11l-1.6 1.6M12.6 12.6L11 11M5 5L3.4 3.4"/></svg></button>
+      </div>
+    </header>
+
+    <section class="sessions-panel" id="sessionsPanel" aria-label="История сессий" hidden>
+      <div class="sessions-panel-heading">
+        <strong>История</strong>
+        <div class="sessions-panel-actions">
+          <button class="text-button" id="newSessionBtn"><svg class="icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg> Новая</button>
+          <button class="text-button" id="closeSessions">Закрыть</button>
+        </div>
+      </div>
+      <div class="sessions-list" id="sessionsList"></div>
+    </section>
+
+    <section class="subagents-panel" id="subagentsPanel" aria-label="Sub-агенты" hidden>
+      <div class="subagents-panel-heading">
+        <strong>Sub-агенты</strong>
+        <div class="subagents-panel-actions">
+          <button class="text-button" id="addSubAgentBtn"><svg class="icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg> Добавить</button>
+          <button class="text-button" id="closeSubAgents">Закрыть</button>
+        </div>
+      </div>
+      <div class="subagents-list" id="subagentsList"></div>
+      <!-- Форму показываем по кнопке Добавить/Изменить, JS заполняет поля -->
+      <div class="subagent-form" id="subagentForm" hidden>
+        <input type="hidden" id="subagentFormId" />
+        <label class="field">
+          <span>Идентификатор</span>
+          <input id="saId" class="input mono" placeholder="reviewer-jjk" />
+        </label>
+        <label class="field">
+          <span>Название</span>
+          <input id="saDisplayName" class="input" placeholder="Ревизор JJK" />
+        </label>
+        <label class="field">
+          <span>Модель</span>
+          <input id="saModel" class="input mono" placeholder="@cf/moonshotai/kimi-k2.7-code" />
+        </label>
+        <label class="field">
+          <span>Специализация</span>
+          <select id="saSpecialty" class="select">
+            <option value="reviewer">Ревизор</option>
+            <option value="researcher">Исследователь</option>
+            <option value="vision">Vision-оценщик</option>
+            <option value="custom">Свой</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Память контекста</span>
+          <select id="saMemoryMode" class="select">
+            <option value="none">Без памяти</option>
+            <option value="task" selected>В пределах задачи</option>
+            <option value="session">Вся сессия</option>
+            <option value="ask">Спрашивать</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Разрешённые инструменты (через запятую)</span>
+          <input id="saAllowedTools" class="input mono" placeholder="repo.read, repo.search" />
+        </label>
+        <label class="field">
+          <span>Системный промт (переопределяет дефолт)</span>
+          <textarea id="saPrompt" class="rules-editor" rows="3" spellcheck="false"></textarea>
+        </label>
+        <div class="menu-actions">
+          <button class="primary-button" id="saveSubAgent">Сохранить</button>
+          <button class="primary-button secondary" id="cancelSubAgent">Отмена</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Этап 6: Knowledge Base панель -->
+    <section class="knowledge-panel" id="knowledgePanel" aria-label="База знаний" hidden>
+      <div class="sessions-panel-heading">
+        <strong>База знаний</strong>
+        <div class="sessions-panel-actions">
+          <button class="text-button" id="knowledgeSearchBtn"><svg class="icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7" cy="7" r="4"/><path d="M10 10l3.5 3.5"/></svg> Поиск через модель</button>
+          <button class="text-button" id="closeKnowledge">Закрыть</button>
+        </div>
+      </div>
+      <input id="knowledgeSearchInput" class="input" placeholder="Поиск по базе знаний…" />
+      <div class="knowledge-list" id="knowledgeList"></div>
+    </section>
+
+    <!-- Этап 6: Skills панель -->
+    <section class="skills-panel" id="skillsPanel" aria-label="Скиллы" hidden>
+      <div class="sessions-panel-heading">
+        <strong>Скиллы</strong>
+        <div class="sessions-panel-actions">
+          <button class="text-button" id="skillCreateBtn"><svg class="icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg> Создать через ИИ</button>
+          <button class="text-button" id="closeSkills">Закрыть</button>
+        </div>
+      </div>
+      <div class="skills-create-row" id="skillsCreateRow" hidden>
+        <input id="skillTopicInput" class="input" placeholder="Опиши тему скилла (например «регистрация предметов в Forge»)…" />
+        <button class="primary-button" id="skillCreateConfirm">Создать</button>
+      </div>
+      <div class="skills-list" id="skillsList"></div>
+    </section>
+
+    <section class="status-strip" id="statusStrip" aria-label="Статус проекта">
+      <div class="status-facts" id="statusFacts">
+        <span class="status-fact placeholder">Обнови индекс, чтобы увидеть проект</span>
+      </div>
+      <span class="status-pill" id="statusPill">idle</span>
+    </section>
+
+    <main class="chat-feed" id="chatFeed">
+      <section class="empty-workspace" id="emptyWorkspace" hidden>
+        <strong>Открой папку Minecraft-мода</strong>
+        <span>Через File → Open Folder. MineAgent работает с текущим workspace VS Code.</span>
+        <button class="primary-button" id="openWorkspace">Open Folder</button>
+      </section>
+
+      <article class="message assistant welcome" id="welcomeMessage">
+        <span class="avatar">M</span>
+        <div class="message-body">
+          <p>Я MineAgent — помогаю разрабатывать Minecraft-моды. Выбери модель через кнопку внизу и опиши задачу.</p>
+        </div>
+      </article>
+    </main>
+
+    <footer class="composer">
+      <div class="composer-menus">
+        <section class="composer-menu model-menu" id="modelMenu" hidden>
+          <div class="menu-heading">
+            <strong>Модель</strong>
+            <button class="text-button" id="refreshProviderModels">Обновить модели</button>
+          </div>
+          <select id="providerSelect" class="select compact-input" aria-label="Провайдер">
+            <option value="cloudflare" selected>Cloudflare Workers AI</option>
+            <option value="fireworks">Fireworks AI</option>
+            <option value="openai">OpenAI</option>
+            <option value="anthropic">Anthropic</option>
+            <option value="custom">Custom OpenAI-compatible</option>
+          </select>
+          <input id="modelSearch" class="input" placeholder="Поиск по имени или id" />
+          <div class="model-list" id="modelList" role="listbox" aria-label="Список моделей">
+            <!-- модели рендерятся JS-кодом, сгруппированные по вендорам -->
+          </div>
+          <input id="providerModelInput" class="input mono" value="@cf/moonshotai/kimi-k2.7-code" placeholder="Custom model id" />
+          <div class="capability-strip" id="modelCapabilities"></div>
+          <div class="menu-actions">
+            <button class="primary-button" id="useProviderModel">Выбрать</button>
+            <button class="primary-button secondary" id="testProvider">Проверить</button>
+            <button class="primary-button secondary" id="setCurrentProviderKey">Key</button>
+          </div>
+        </section>
+
+        <section class="composer-menu" id="toolsMenu" hidden>
+          <button class="menu-row" id="runBuild"><svg class="icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.5 2.5l3 3-2 2-3-3z"/><path d="M8.5 4.5L3 10l-.5 3 3-.5 5.5-5.5"/></svg> Gradle build</button>
+          <button class="menu-row" id="applyLastPatch">Применить patch</button>
+          <button class="menu-row" id="runClient"><svg class="icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3l8 5-8 5z" fill="currentColor" stroke="none"/></svg> Run Client</button>
+          <button class="menu-row" id="parseLog"><svg class="icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 2h6l3 3v9H4z"/><path d="M10 2v3h3"/><path d="M6 8h5M6 10.5h5M6 5h2.5"/></svg> Разобрать latest.log</button>
+          <button class="menu-row" id="refreshIndex"><svg class="icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9"/><path d="M13.5 2.5v3h-3"/></svg> Обновить индекс</button>
+        </section>
+
+        <section class="composer-menu settings-menu" id="settingsMenu" hidden>
+          <div class="providers" id="providers"></div>
+          <button class="menu-row" id="openRules">Открыть AGENTS.md</button>
+          <button class="menu-row" id="setProviderKey">Настроить ключ провайдера</button>
+          <details class="rules-block">
+            <summary>Правила (AGENTS.md)</summary>
+            <textarea id="rulesEditor" class="rules-editor" spellcheck="false" aria-label="AGENTS.md rules"></textarea>
+            <button class="primary-button" id="saveRules">Сохранить правила</button>
+          </details>
+          <details class="rules-block">
+            <summary>Internet research</summary>
+            <div id="researchSummary" class="inline-summary">Источников пока нет.</div>
+            <textarea id="researchEditor" class="rules-editor research-editor" spellcheck="false" aria-label="Research ledger JSON"></textarea>
+            <div class="research-actions">
+              <button class="primary-button secondary" id="searchWebResearch">Поиск в web</button>
+              <button class="primary-button secondary" id="saveResearchLedger">Сохранить</button>
+            </div>
+          </details>
+        </section>
+      </div>
+
+      <div class="composer-toolbar" aria-label="Управление composer">
+        <select class="select" id="agentMode" title="Режим" aria-label="Режим">
+          <option value="ask">Спросить</option>
+          <option value="plan">План</option>
+          <option value="build">Собрать</option>
+          <option value="playtest">Плейтест</option>
+        </select>
+        <button class="select-button model-trigger" data-menu-toggle="modelMenu" id="modelButton" title="Модель">
+          <span class="model-trigger-label" id="modelButtonLabel">Kimi K2.7 Code</span>
+        </button>
+        <button class="tool-button" data-menu-toggle="toolsMenu" title="Инструменты" aria-label="Инструменты"><svg class="icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 2.5a2.5 2.5 0 0 0-1.8 4.3L3 13l1.5 1.5 6.2-6.2A2.5 2.5 0 0 0 13 5.5l-2 2-1.5-1.5 2-2A2.5 2.5 0 0 0 11 2.5z"/></svg></button>
+        <span class="composer-status" id="composerStatus">Готов</span>
+      </div>
+      <div class="composer-input-row">
+        <textarea id="promptInput" class="prompt-input" rows="2" placeholder="Опиши задачу: техника, структура, моб, 3D модель..."></textarea>
+        <button class="run-button" id="runPrompt" title="Отправить" aria-label="Отправить"><svg class="icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2.5L2 7.5l4.5 1.5L8 13l6-10.5z"/><path d="M6.5 9L14 2.5"/></svg></button>
+      </div>
+    </footer>
+
+    <!-- Approval Gateway modal: показывается при запросе tool/sub-agent approval -->
+    <div class="approval-overlay" id="approvalOverlay" hidden>
+      <div class="approval-modal" role="dialog" aria-modal="true" aria-labelledby="approvalTitle">
+        <h2 class="approval-title" id="approvalTitle">MineAgent хочет выполнить действие</h2>
+        <p class="approval-description" id="approvalDescription"></p>
+        <div class="approval-risk">
+          <span class="approval-risk-label">Уровень риска:</span>
+          <span class="approval-risk-value" id="approvalRisk"></span>
+        </div>
+        <pre class="approval-input" id="approvalInput" hidden></pre>
+        <div class="approval-modal-buttons">
+          <button class="primary-button" id="approvalConfirmOnce">Подтвердить один раз</button>
+          <button class="primary-button secondary" id="approvalAlwaysInSession">Всегда в этой сессии</button>
+          <button class="primary-button secondary" id="approvalAlways">Всегда</button>
+          <button class="primary-button secondary danger" id="approvalDeny">Отклонить</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Этап 5: Critic modal — модалка разногласия main vs critic -->
+    <div class="approval-overlay" id="criticModal" hidden>
+      <div class="approval-modal" role="dialog" aria-modal="true" aria-labelledby="criticTitle">
+        <h2 class="approval-title" id="criticTitle">Разногласие между main и critic</h2>
+        <div class="critic-opinions">
+          <div class="critic-opinion">
+            <span class="critic-opinion-label">Мнение main-агента:</span>
+            <span id="criticMainOpinion"></span>
+          </div>
+          <div class="critic-opinion">
+            <span class="critic-opinion-label">Мнение critic:</span>
+            <span id="criticCriticOpinion"></span>
+          </div>
+        </div>
+        <div class="approval-modal-buttons">
+          <button class="primary-button critic-apply">Применить</button>
+          <button class="primary-button secondary danger critic-reject">Отклонить</button>
+          <button class="primary-button secondary critic-decide">Решить самому</button>
+          <button class="primary-button secondary critic-cancel">Отмена</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+  const previewState = {
+  "config": {
+    "providers": {
+      "defaultProvider": "cloudflare",
+      "defaultModel": "@cf/moonshotai/kimi-k2.7-code",
+      "cloudflare": {
+        "accountId": "preview-account"
+      }
+    },
+    "agent": {
+      "approvalMode": "ask"
+    },
+    "minecraft": {
+      "gradleBuildTask": "build",
+      "runClientTask": "runClient",
+      "devBridgeEnabled": false
+    },
+    "paths": {
+      "referencePacks": ".mineagent/reference-packs"
+    }
+  },
+  "providerStatuses": [
+    {
+      "id": "openai",
+      "hasKey": false
+    },
+    {
+      "id": "anthropic",
+      "hasKey": false
+    },
+    {
+      "id": "fireworks",
+      "hasKey": true
+    },
+    {
+      "id": "cloudflare",
+      "hasKey": true
+    },
+    {
+      "id": "custom",
+      "hasKey": false
+    }
+  ],
+  "rules": "# MineAgent Workspace Rules\n\nPreview uses mocked workspace data.\n",
+  "projectMap": {
+    "indexedAt": "2026-06-24T13:40:46.612Z",
+    "root": "D:/projects/karo-mine-test",
+    "loader": "forge",
+    "minecraftVersion": "1.20.1",
+    "javaVersion": "17",
+    "gradleTasks": [
+      "build",
+      "runClient"
+    ],
+    "mainModId": "karo_test",
+    "registries": [
+      {
+        "type": "item",
+        "name": "debug_wand",
+        "file": "src/main/java/ModItems.java"
+      },
+      {
+        "type": "block",
+        "name": "test_ore",
+        "file": "src/main/java/ModBlocks.java"
+      }
+    ],
+    "eventHandlers": [
+      "CommonEvents.java"
+    ],
+    "networkPackets": [],
+    "clientOnlyClasses": [
+      "ClientSetup.java"
+    ],
+    "resources": {
+      "lang": [
+        "en_us.json"
+      ],
+      "models": [
+        "item/debug_wand.json"
+      ],
+      "textures": [
+        "item/debug_wand.png"
+      ],
+      "recipes": [
+        "debug_wand.json"
+      ],
+      "lootTables": [],
+      "tags": [],
+      "sounds": []
+    },
+    "mixins": [],
+    "accessWideners": [],
+    "datagen": [],
+    "architectureHints": [
+      "Forge-style deferred registration"
+    ]
+  },
+  "referenceRequests": [
+    {
+      "query": "Forge 1.20.1 capability lifecycle",
+      "createdAt": "2026-06-24T13:37:46.613Z",
+      "status": "нужно подтверждение"
+    }
+  ],
+  "evidence": [
+    {
+      "command": "gradlew build",
+      "cwd": "D:/projects/karo-mine-test",
+      "exitCode": 0,
+      "startedAt": "2026-06-24T13:40:34.613Z",
+      "completedAt": "2026-06-24T13:40:46.613Z",
+      "stdout": "> Task :compileJava\n> Task :processResources\nBUILD SUCCESSFUL",
+      "stderr": ""
+    }
+  ]
+};
+  window.acquireVsCodeApi = () => ({
+    postMessage(message) {
+      handlePreviewMessage(message);
+    }
+  });
+  function emitPreview(type, payload) {
+    window.postMessage({ type, payload }, "*");
+  }
+  function handlePreviewMessage(message) {
+    if (message.type === "ready") {
+      emitPreview("state", previewState);
+      // Этап 3: индикатор Blockbench. В preview показываем «подключено»
+      // с двумя инструментами, чтобы видеть chip в шапке.
+      emitPreview("blockbenchStatus", {
+        status: "connected",
+        url: "http://localhost:3000/bb-mcp",
+        toolCount: 8,
+        toolNames: ["blockbench.render", "blockbench.add_cube"],
+        serverName: "blockbench-mcp"
+      });
+      // Этап 4: индикатор Minecraft Dev Bridge. В preview показываем «подключено»
+      // с 6 инструментами моста, чтобы видеть второй chip рядом с Blockbench.
+      emitPreview("minecraftStatus", {
+        status: "connected",
+        url: "http://127.0.0.1:3100/mc-mcp",
+        toolCount: 6,
+        toolNames: ["minecraft.summon", "minecraft.apply_effect", "minecraft.set_camera", "minecraft.screenshot", "minecraft.get_state", "minecraft.reload_resources"],
+        serverName: "mineagent-bridge",
+        hasToken: true
+      });
+      // Демонстрация approval modal: шлём фейковый запрос после старта.
+      setTimeout(() => {
+        emitPreview("approvalRequest", {
+          requestId: "preview-approval-1",
+          toolName: "gradle.run",
+          scope: "tool",
+          scopeId: "gradle.run",
+          description: "Gradle build (build)",
+          risk: "command",
+          input: { task: "build" }
+        });
+      }, 600);
+      return;
+    }
+    if (message.type === "blockbenchConnect") {
+      emitPreview("blockbenchStatus", {
+        status: "connected",
+        url: "http://localhost:3000/bb-mcp",
+        toolCount: 8,
+        toolNames: ["blockbench.render", "blockbench.add_cube"],
+        serverName: "blockbench-mcp"
+      });
+      return;
+    }
+    if (message.type === "blockbenchDisconnect") {
+      emitPreview("blockbenchStatus", { status: "disconnected", url: "http://localhost:3000/bb-mcp", toolCount: 0, toolNames: [] });
+      return;
+    }
+    if (message.type === "listSessions") {
+      emitPreview("sessionsList", [
+        { id: "session-preview-1", title: "Добавить debug_wand предмет", updatedAt: new Date(Date.now() - 3600_000).toISOString(), messageCount: 6 },
+        { id: "session-preview-2", title: "Регистрация test_ore блока", updatedAt: new Date(Date.now() - 86_400_000).toISOString(), messageCount: 12 },
+        { id: "session-preview-3", title: "Без названия", updatedAt: new Date(Date.now() - 172_800_000).toISOString(), messageCount: 0 }
+      ]);
+      return;
+    }
+    if (message.type === "loadSession") {
+      emitPreview("sessionRestored", {
+        id: message.payload?.id ?? "session-preview-1",
+        title: "Добавить debug_wand предмет",
+        messages: [
+          { role: "user", text: "Создай предмет debug_wand для Forge 1.20.1.", timestamp: new Date(Date.now() - 3700_000).toISOString() },
+          { role: "assistant", text: "Принял. Обновлю карту проекта и предложу патч для ModItems.java с регистрацией deferred-предмета.", timestamp: new Date(Date.now() - 3650_000).toISOString() }
+        ]
+      });
+      return;
+    }
+    if (message.type === "newSession") {
+      emitPreview("sessionCleared", {});
+      return;
+    }
+    if (message.type === "subagents.list") {
+      emitPreview("subagentsList", [
+        { id: "reviewer-jjk", displayName: "Ревизор JJK", model: "@cf/zai-org/glm-4.7-flash", specialty: "reviewer", allowedTools: ["repo.read", "repo.search"], memoryMode: "task", enabled: true },
+        { id: "researcher-1", displayName: "Исследователь источников", model: "@cf/moonshotai/kimi-k2.7-code", specialty: "researcher", allowedTools: ["web.research"], memoryMode: "session", enabled: false }
+      ]);
+      return;
+    }
+    if (message.type === "subagents.add" || message.type === "subagents.update" || message.type === "subagents.remove" || message.type === "subagents.toggle") {
+      // Echo back updated list.
+      emitPreview("subagentsList", [
+        { id: "reviewer-jjk", displayName: "Ревизор JJK", model: "@cf/zai-org/glm-4.7-flash", specialty: "reviewer", allowedTools: ["repo.read", "repo.search"], memoryMode: "task", enabled: true }
+      ]);
+      return;
+    }
+    if (message.type === "deleteSession") {
+      emitPreview("sessionsList", []);
+      return;
+    }
+    if (message.type === "refreshIndex") {
+      emitPreview("projectMap", previewState.projectMap);
+      return;
+    }
+    if (message.type === "runGradleBuild") {
+      emitPreview("evidence", previewState.evidence);
+      return;
+    }
+    if (message.type === "parseLog") {
+      emitPreview("logSummary", {
+        fatalLines: [],
+        warnings: ["Preview warning: mocked log parser output."],
+        exceptions: [],
+        likelyCause: "В preview нет настоящего latest.log."
+      });
+      return;
+    }
+    if (message.type === "useFireworksKimi" || message.type === "selectFireworksModel" || message.type === "selectProviderModel") {
+      previewState.config.providers.defaultProvider = message.payload?.provider || "fireworks";
+      previewState.config.providers.defaultModel = message.payload?.model || "accounts/fireworks/models/kimi-k2p7-code";
+      emitPreview("state", previewState);
+      return;
+    }
+    if (message.type === "refreshFireworksModels" || message.type === "refreshProviderModels") {
+      const provider = message.payload?.provider || previewState.config.providers.defaultProvider || "fireworks";
+      const cloudflareModels = [
+        { id: "@cf/moonshotai/kimi-k2.7-code", label: "Kimi K2.7 Code", capabilities: { contextWindow: 262144, vision: true, tools: true, jsonMode: true, reasoning: true, fixedContext: true } },
+        { id: "@cf/openai/gpt-oss-120b", label: "GPT OSS 120B", capabilities: { contextWindow: 128000, vision: false, tools: true, jsonMode: true, reasoning: true, fixedContext: true } },
+        { id: "@cf/zai-org/glm-4.7-flash", label: "GLM 4.7 Flash", capabilities: { contextWindow: 131072, vision: false, tools: true, jsonMode: true, reasoning: true, fixedContext: true } },
+        { id: "@cf/meta/llama-3.1-8b-instruct", label: "Llama 3.1 8B Instruct", capabilities: { contextWindow: 128000, vision: false, tools: false, jsonMode: true, fixedContext: true } }
+      ];
+      const fireworksModels = [
+        { id: "accounts/fireworks/models/kimi-k2p7-code", label: "Kimi K2.7 Code", capabilities: { contextWindow: 262000, vision: false, tools: true, jsonMode: true, fixedContext: true } },
+        { id: "accounts/fireworks/models/kimi-k2p7-code-fast", label: "Kimi K2.7 Code Fast", capabilities: { contextWindow: 262000, vision: false, tools: true, jsonMode: true, fixedContext: true } },
+        { id: "accounts/fireworks/models/deepseek-v3", label: "DeepSeek V3", capabilities: { contextWindow: 128000, vision: false, tools: true, jsonMode: true, fixedContext: true } },
+        { id: "accounts/fireworks/models/qwen3-coder-480b-a35b-instruct", label: "Qwen3 Coder 480B", capabilities: { contextWindow: 128000, vision: false, tools: true, jsonMode: true, fixedContext: true } }
+      ];
+      emitPreview("providerModels", {
+        provider,
+        models: provider === "cloudflare" ? cloudflareModels : fireworksModels
+      });
+      return;
+    }
+    if (message.type === "setFireworksKey" || message.type === "setCloudflareKey" || message.type === "setProviderKey") {
+      const providerId = message.payload?.provider || (message.type === "setCloudflareKey" ? "cloudflare" : "fireworks");
+      previewState.providerStatuses = previewState.providerStatuses.map((provider) =>
+        provider.id === providerId ? { ...provider, hasKey: true } : provider
+      );
+      emitPreview("state", previewState);
+      return;
+    }
+    if (message.type === "startRun") {
+      emitPreview("runReport", {
+        id: "preview-run",
+        summary: "Preview: модель Fireworks/Kimi настроена, индекс проекта доступен.",
+        projectMap: previewState.projectMap,
+        phases: [
+          { name: "Understand", status: "complete" },
+          { name: "Research", status: "skipped", summary: "Нужен разрешенный поиск источников." },
+          { name: "Patch", status: "skipped", summary: "Патч не запрошен." },
+          { name: "Build", status: "complete" },
+          { name: "Launch", status: "skipped", summary: "Запуск клиента требует подтверждения." },
+          { name: "Playtest", status: "skipped", summary: "Dev-world не настроен." },
+          { name: "Diagnose", status: "skipped", summary: "Нет ошибки для диагностики." },
+          { name: "Report", status: "complete" }
+        ]
+      });
+    }
+  }
+</script>
+  <script src="../media/mineagent.js"></script>
+</body>
+</html>

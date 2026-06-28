@@ -1,0 +1,10 @@
+// Корневой build-скрипт multi-loader проекта. Не плагинится здесь — каждый
+// loader-subproject применяет свой Gradle-плагин (Loom / ModDevGradle /
+// ForgeGradle) и свою обёртку gradle-wrapper, т.к. версии Gradle и плагинов
+// различаются между loader'ами. common/ — plain Java-library.
+
+allprojects {
+    repositories {
+        mavenCentral()
+    }
+}

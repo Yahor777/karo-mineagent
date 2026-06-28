@@ -1,0 +1,29 @@
+modLoader = "javafml"
+loaderVersion = "[47,)"
+license = "UNLICENSED"
+
+[[mods]]
+modId = "mineagent_bridge"
+version = "${version}"
+displayName = "MineAgent Bridge"
+authors = "MineAgent"
+description = '''
+Dev-only MCP server inside the Minecraft client. Lets the MineAgent Workbench
+VS Code extension deterministically summon entities, apply effects, set camera,
+take screenshots and read world state. Disabled in production builds at the
+registration level (client-only, dev-only).
+'''
+
+[[dependencies.mineagent_bridge]]
+modId = "forge"
+mandatory = true
+versionRange = "[47,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.mineagent_bridge]]
+modId = "minecraft"
+mandatory = true
+versionRange = "[1.20.1,1.21)"
+ordering = "NONE"
+side = "BOTH"

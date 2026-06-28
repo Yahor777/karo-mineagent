@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mineagent.local/schemas/config.schema.json",
+  "title": "MineAgent Workspace Config",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "providers",
+    "agent",
+    "minecraft",
+    "paths"
+  ],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1
+    },
+    "providers": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "defaultProvider",
+        "defaultModel",
+        "custom",
+        "cloudflare"
+      ],
+      "properties": {
+        "defaultProvider": {
+          "type": "string",
+          "enum": [
+            "openai",
+            "anthropic",
+            "fireworks",
+            "cloudflare",
+            "custom"
+          ]
+        },
+        "defaultModel": {
+          "type": "string"
+        },
+        "custom": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "baseUrl",
+            "modelsEndpoint",
+            "chatEndpoint"
+          ],
+          "properties": {
+            "baseUrl": {
+              "type": "string"
+            },
+            "modelsEndpoint": {
+              "type": "string"
+            },
+            "chatEndpoint": {
+              "type": "string"
+            }
+          }
+        },
+        "cloudflare": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "accountId"
+          ],
+          "properties": {
+            "accountId": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "agent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "approvalMode",
+        "evidenceRetentionDays",
+        "defaultRunPhases"
+      ],
+      "properties": {
+        "approvalMode": {
+          "type": "string",
+          "enum": [
+            "ask",
+            "workspace",
+            "auto-readonly"
+          ]
+        },
+        "evidenceRetentionDays": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "defaultRunPhases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "minecraft": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "gradleBuildTask",
+        "runClientTask",
+        "devBridgeEnabled"
+      ],
+      "properties": {
+        "gradleBuildTask": {
+          "type": "string"
+        },
+        "runClientTask": {
+          "type": "string"
+        },
+        "devBridgeEnabled": {
+          "type": "boolean"
+        }
+      }
+    },
+    "paths": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "skills",
+        "referencePacks",
+        "playtests",
+        "runs"
+      ],
+      "properties": {
+        "skills": {
+          "type": "string"
+        },
+        "referencePacks": {
+          "type": "string"
+        },
+        "playtests": {
+          "type": "string"
+        },
+        "runs": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

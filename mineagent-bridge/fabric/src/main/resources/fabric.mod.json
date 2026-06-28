@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "mineagent_bridge",
+  "version": "${version}",
+  "name": "MineAgent Bridge",
+  "description": "Dev-only MCP server inside the Minecraft client. Lets the MineAgent Workbench VS Code extension deterministically summon entities, apply effects, set camera, take screenshots and read world state.",
+  "authors": ["MineAgent"],
+  "license": "UNLICENSED",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "dev.mineagent.bridge.fabric.FabricBridgeClient"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~1.21.1",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}

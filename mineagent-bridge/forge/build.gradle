@@ -1,0 +1,59 @@
+// Forge 1.20.1 мод mineagent-bridge. ForgeGradle для dev-runs (runClient) и
+// сборки. MC 1.20.1 → Java 17 (не Java 21, как в 1.21). Bridge активен только
+// в dev + только на клиенте (@Mod + @EventBusSubscriber(Dist.CLIENT)),
+// registration-level production-disable (entry-11 source-ledger).
+plugins {
+    id 'net.minecraftforge.gradle' version '[6.0.16,6.2)'
+    id 'java'
+}
+
+version = "0.1.0"
+group = "dev.mineagent.bridge"
+
+// MC 1.20.1 — официальная mcp-маппинг-версия.
+minecraft {
+    mappings channel: 'official', version: '1.20.1'
+    runs {
+        client {
+            workingDirectory project.file('run')
+            property 'forge.logging.markers', 'REGISTRIES'
+            property 'forge.logging.console.level', 'debug'
+            mods {
+                mineagent_bridge {
+                    source sourceSets.main
+                }
+            }
+        }
+    }
+}
+
+repositories {
+    mavenCentral()
+    maven { url = "https://maven.minecraftforge.net/" }
+}
+
+dependencies {
+    minecraft 'net.minecraftforge:forge:1.20.1-47.3.0'
+    // common — ядро MCP-сервера (includeBuild ../common).
+    implementation project(":common")
+    implementation 'com.google.code.gson:gson:2.10.1'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+processResources {
+    inputs.property "version", project.version
+    filesMatching("META-INF/mods.toml") {
+        expand "version": project.version
+    }
+}

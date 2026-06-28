@@ -1,0 +1,170 @@
+{
+  "name": "mineagent-workbench",
+  "displayName": "MineAgent Workbench",
+  "description": "A Minecraft modding workbench for VS Code with AI-assisted repository understanding, Gradle runs, research packs, and playtest flows.",
+  "version": "0.1.0",
+  "publisher": "mineagent",
+  "license": "UNLICENSED",
+  "private": true,
+  "engines": {
+    "vscode": "^1.93.0",
+    "node": ">=20.0.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "minecraft",
+    "forge",
+    "fabric",
+    "neoforge",
+    "modding",
+    "ai"
+  ],
+  "main": "./out/src/extension.js",
+  "activationEvents": [
+    "onView:mineagent.workbench",
+    "onCommand:mineagent.openWorkbench",
+    "onCommand:mineagent.initializeWorkspace",
+    "onCommand:mineagent.refreshRepoIndex",
+    "onCommand:mineagent.runGradleBuild",
+    "onCommand:mineagent.runClient",
+    "onCommand:mineagent.openAgentsRules",
+    "onCommand:mineagent.setProviderKey",
+    "onCommand:mineagent.testFireworks",
+    "onCommand:mineagent.testConfiguredProvider"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "mineagent.openWorkbench",
+        "title": "MineAgent: Open Workbench",
+        "category": "MineAgent"
+      },
+      {
+        "command": "mineagent.initializeWorkspace",
+        "title": "MineAgent: Initialize Workspace",
+        "category": "MineAgent"
+      },
+      {
+        "command": "mineagent.refreshRepoIndex",
+        "title": "MineAgent: Refresh Repository Index",
+        "category": "MineAgent"
+      },
+      {
+        "command": "mineagent.runGradleBuild",
+        "title": "MineAgent: Run Gradle Build",
+        "category": "MineAgent"
+      },
+      {
+        "command": "mineagent.runClient",
+        "title": "MineAgent: Launch Minecraft Client",
+        "category": "MineAgent"
+      },
+      {
+        "command": "mineagent.openAgentsRules",
+        "title": "MineAgent: Open AGENTS.md",
+        "category": "MineAgent"
+      },
+      {
+        "command": "mineagent.setProviderKey",
+        "title": "MineAgent: Set Provider API Key",
+        "category": "MineAgent"
+      },
+      {
+        "command": "mineagent.testFireworks",
+        "title": "MineAgent: Test Fireworks Provider",
+        "category": "MineAgent"
+      },
+      {
+        "command": "mineagent.testConfiguredProvider",
+        "title": "MineAgent: Test Configured Provider",
+        "category": "MineAgent"
+      }
+    ],
+    "configuration": {
+      "title": "MineAgent Workbench",
+      "properties": {
+        "mineagent.defaultProvider": {
+          "type": "string",
+          "enum": [
+            "openai",
+            "anthropic",
+            "fireworks",
+            "cloudflare",
+            "custom"
+          ],
+          "default": "cloudflare",
+          "description": "Default AI provider used by MineAgent."
+        },
+        "mineagent.defaultModel": {
+          "type": "string",
+          "default": "@cf/moonshotai/kimi-k2.7-code",
+          "description": "Default model id. Leave empty to use the provider default."
+        },
+        "mineagent.approvalMode": {
+          "type": "string",
+          "enum": [
+            "ask",
+            "workspace",
+            "auto-readonly"
+          ],
+          "default": "ask",
+          "description": "How MineAgent should handle actions that modify files or run commands."
+        },
+        "mineagent.customProviderBaseUrl": {
+          "type": "string",
+          "default": "",
+          "description": "Base URL for a custom OpenAI-compatible provider."
+        },
+        "mineagent.cloudflareAccountId": {
+          "type": "string",
+          "default": "",
+          "description": "Cloudflare Account ID for Workers AI. API token is stored in SecretStorage."
+        }
+      }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "mineagent",
+          "title": "MineAgent",
+          "icon": "media/mineagent-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "mineagent": [
+        {
+          "type": "webview",
+          "id": "mineagent.workbench",
+          "name": "Workbench"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "mineagent.refreshRepoIndex",
+          "when": "view == mineagent.workbench",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "test": "npm run compile && node --test \"out/test/**/*.test.js\"",
+    "vscode:prepublish": "npm run compile",
+    "preview:generate": "npm run compile && node scripts/generate-webview-preview.mjs",
+    "lint:json": "node scripts/validate-json.mjs",
+    "package": "npm run compile && vsce package --no-dependencies --allow-missing-repository"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.15",
+    "@types/vscode": "^1.93.0",
+    "@vscode/vsce": "^3.9.2",
+    "typescript": "^5.6.2"
+  }
+}

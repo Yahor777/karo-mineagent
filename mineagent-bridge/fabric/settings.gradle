@@ -1,0 +1,8 @@
+// Fabric-подпроект mineagent-bridge. Отдельный settings/wrapper, т.к. Fabric
+// Loom требует свою версию Gradle и свой plugin-classpath (отличается от common
+// и от NeoForge/Forge). Включаем common как composite-проект через fileTree.
+rootProject.name = "mineagent-bridge-fabric"
+
+// common — ядро без Minecraft, собирается обычной java-library. Подключаем его
+// как вложенный проект, чтобы fabric-модуль зависел от скомпилированного common.
+includeBuild "../common"

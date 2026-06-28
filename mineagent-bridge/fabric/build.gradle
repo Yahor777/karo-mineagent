@@ -1,0 +1,56 @@
+// Fabric 1.21.x мод mineagent-bridge. Использует Fabric Loom для dev-runs
+// (runClient) и сборки production-jar. Поднимает MCP-endpoint ТОЛЬКО в
+// dev-окружении (isDevelopmentEnvironment) — в prod client-entrypoint остаётся
+// пустой (registration-level disable, entry-11 source-ledger).
+plugins {
+    id 'fabric-loom' version '1.7-SNAPSHOT'
+    id 'java'
+}
+
+version = "0.1.0"
+group = "dev.mineagent.bridge"
+
+// MC 1.21.x, Fabric Loader 0.16+, Fabric API актуальная под 1.21.
+def minecraftVersion = "1.21.1"
+def yarnMappings = "1.21.1+build.3"
+def loaderVersion = "0.16.0"
+def fabricApiVersion = "0.102.0+1.21.1"
+
+repositories {
+    mavenCentral()
+    maven { url = "https://maven.fabricmc.net/" }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${minecraftVersion}"
+    mappings "net.fabricmc:yarn:${yarnMappings}:v2"
+    modImplementation "net.fabricmc:fabric-loader:${loaderVersion}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${fabricApiVersion}"
+
+    // common — ядро MCP-сервера (includeBuild ../common). В рантайме Minecraft
+    // уже предоставляет Gson, но compile-classpath берём из common.
+    implementation project(":common")
+    // Gson доступен через Minecraft в рантайме; явно для compile.
+    implementation 'com.google.code.gson:gson:2.10.1'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+    // MC 1.21 требует Java 21; toolchain чтобы не зависеть от локальной JDK.
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+processResources {
+    // Подставляем версию в fabric.mod.json.
+    inputs.property "version", project.version
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version
+    }
+}

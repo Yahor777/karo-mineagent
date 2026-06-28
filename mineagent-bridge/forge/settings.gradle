@@ -1,0 +1,6 @@
+// Forge 1.20.1 подпроект mineagent-bridge. Отдельный settings/wrapper: ForgeGradle
+// требует свою версию Gradle (6.x/7.x) и свой plugin-classpath.
+rootProject.name = "mineagent-bridge-forge"
+
+// common — ядро без Minecraft, java-library. Composite-build.
+includeBuild "../common"

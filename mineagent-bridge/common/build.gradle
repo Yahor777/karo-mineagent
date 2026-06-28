@@ -1,0 +1,43 @@
+// common/ — loader-agnostic ядро MCP-сервера. Чистая Java + Gson (Gson
+// предоставляется Minecraft во всех трёх loader'ах, но для тестирования
+// common в изоляции тянем его сами через mavenCentral). Никаких классов
+// Minecraft здесь быть не должно — доступ к игре идёт через SPI BridgeGameAccess.
+plugins {
+    id 'java-library'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+// Исходники и тесты хранятся в UTF-8 (кириллические комментарии — по AGENTS.md
+// проект на русском). На Windows Gradle по умолчанию использует platform-encoding
+// (Cp1251), что ломает компиляцию. Явно фиксируем UTF-8 для всех задач Java.
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+tasks.withType(Test).configureEach {
+    systemProperty 'file.encoding', 'UTF-8'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Gson для JSON (de)serialization wire-формата JSON-RPC. В рантайме Minecraft
+    // commons-loader'ы предоставляют Gson, но для standalone unit-тестов common/
+    // нужна своя зависимость.
+    api 'com.google.code.gson:gson:2.10.1'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform()
+    testLogging {
+        events 'passed', 'skipped', 'failed'
+    }
+}

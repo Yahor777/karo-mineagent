@@ -1,0 +1,212 @@
+import type { Dictionary } from "./types";
+
+// Основной словарь MineAgent. Проект по умолчанию на русском.
+// Все тексты, которые видит пользователь и модель, берутся отсюда.
+// При добавлении английского: создадим en.ts с тем же набором ключей.
+export const ru: Dictionary = {
+  // Общие
+  "common.ok": "ОК",
+  "common.cancel": "Отмена",
+  "common.save": "Сохранить",
+  "common.refresh": "Обновить",
+  "common.loading": "Загрузка…",
+  "common.error": "Ошибка",
+  "common.confirm": "Подтвердить",
+  "common.continue": "Продолжить",
+  "common.stop": "Остановить",
+  "common.neverAgainInSession": "Больше не показывать в этой сессии",
+
+  // UI: вкладки workbench
+  "tab.chat": "Чат",
+  "tab.runs": "Запуски",
+  "tab.lab": "Лаборатория",
+  "tab.references": "Ссылки",
+  "tab.rules": "Правила",
+  "tab.skills": "Скиллы",
+  "tab.providers": "Провайдеры",
+
+  // Composer / модель
+  "composer.placeholder": "Опиши задачу для MineAgent…",
+  "composer.mode.ask": "Спросить",
+  "composer.mode.plan": "План",
+  "composer.mode.build": "Собрать",
+  "composer.mode.playtest": "Плейтест",
+  "composer.send": "Отправить",
+  "composer.stopRun": "Остановить",
+
+  // Модели / провайдеры
+  "provider.select": "Провайдер",
+  "provider.modelPlaceholder": "Custom model id",
+  "provider.refreshModels": "Обновить модели",
+  "provider.test": "Проверить",
+  "provider.choose": "Выбрать",
+  "provider.configureKeys": "Настроить ключи",
+  "provider.keyStored": "Ключ сохранён в SecretStorage.",
+  "provider.storedKey": "Ключ хранится в SecretStorage, не в файлах проекта.",
+  "provider.selectProvider": "Выбери провайдера",
+
+  // Запуски / фазы
+  "run.started": "Принял задачу. Собираю карту проекта перед запросом к модели.",
+  "run.indexingProject": "Индексирую проект: loader, версии, mod id, ресурсы и registries.",
+  "run.buildingProject": "Запускаю Gradle build и собираю evidence.",
+  "run.preparingContext": "Готовлю контекст проекта для выбранной модели.",
+  "run.askingModel": "Отправляю запрос в {provider}: {model}.",
+  "run.cancelled": "Запрос остановлен пользователем.",
+  "run.phaseSkipped": "Фаза пропущена.",
+  "run.phaseComplete": "Фаза завершена.",
+  "run.phaseFailed": "Фаза завершилась ошибкой.",
+
+  // Ошибки — человекочитаемые
+  "error.modelNotFound": "{provider}: выбранная модель не отвечает или недоступна для этого ключа. Нажми «Обновить модели» и выбери модель из актуального списка провайдера.",
+  "error.billingBlocked": "{provider} отклонил API-запрос из-за биллинга или статуса аккаунта, привязанного к сохранённому ключу. Проверь выбранный аккаунт/организацию, кредиты, лимит расходов и неоплаченные счета, затем нажми «Проверить» или «Обновить модели».",
+  "error.endpointMethod": "{provider}: этот API endpoint не поддерживает выбранный HTTP-метод. Обнови список моделей ещё раз; MineAgent использует catalog fallback, если live endpoint недоступен.",
+  "error.missingApiKey": "Для этого провайдера не сохранён API key. Открой «Настроить ключи»; ключ сохранится только в VS Code SecretStorage.",
+  "error.missingCloudflareAccount": "Для Cloudflare нужен Account ID. Открой настройку Cloudflare и вставь Account ID плюс Workers AI API token.",
+  "error.network": "Не удалось связаться с провайдером модели. Проверь сеть и попробуй «Обновить модели».",
+  "error.aborted": "Запрос остановлен.",
+  "error.generic": "Произошла ошибка.",
+
+  // Token budget
+  "budget.sessionLabel": "Токены за сессию",
+  "budget.inputTokens": "Входящие",
+  "budget.outputTokens": "Исходящие",
+  "budget.visionCalls": "Vision-вызовы",
+  "budget.limitExceededTitle": "Превышен лимит токенов",
+  "budget.limitExceededBody": "За эту сессию потрачено {used} токенов (лимит {limit}). Продолжить?",
+
+  // Approval Gateway
+  "approval.title": "MineAgent хочет выполнить действие",
+  "approval.confirmOnce": "Подтвердить один раз",
+  "approval.alwaysInSession": "Всегда в этой сессии",
+  "approval.always": "Всегда",
+  "approval.deny": "Отклонить",
+  "approval.description": "{tool}: {description}",
+  "approval.risk": "Уровень риска",
+  "approval.risk.read": "Чтение",
+  "approval.risk.write": "Запись",
+  "approval.risk.command": "Команда",
+  "approval.risk.network": "Сеть",
+  "approval.risk.game-control": "Управление игрой",
+  "approval.timeout": "Время ожидания approval истекло — действие отклонено.",
+  "approval.denied": "Действие отклонено пользователем.",
+
+  // Sub-агенты
+  "subagent.toggle": "Sub-агенты",
+  "subagent.add": "Добавить sub-агента",
+  "subagent.edit": "Изменить",
+  "subagent.delete": "Удалить",
+  "subagent.deleteConfirm": "Удалить sub-агента «{name}»?",
+  "subagent.id": "Идентификатор",
+  "subagent.displayName": "Название",
+  "subagent.model": "Модель",
+  "subagent.specialty": "Специализация",
+  "subagent.specialty.reviewer": "Ревизор",
+  "subagent.specialty.researcher": "Исследователь",
+  "subagent.specialty.vision": "Vision-оценщик",
+  "subagent.specialty.custom": "Свой",
+  "subagent.prompt": "Системный промт (переопределяет дефолт)",
+  "subagent.allowedTools": "Разрешённые инструменты (через запятую)",
+  "subagent.memoryMode": "Память контекста",
+  "subagent.memory.none": "Без памяти",
+  "subagent.memory.task": "В пределах задачи",
+  "subagent.memory.session": "Вся сессия",
+  "subagent.memory.ask": "Спрашивать",
+  "subagent.enabled": "Включён",
+  "subagent.disabled": "Выключен",
+  "subagent.empty": "Sub-агентов пока нет. Добавьте через «＋».",
+  "subagent.save": "Сохранить",
+  "subagent.cancel": "Отмена",
+
+  // Source Ledger
+  "references.title": "Source Ledger",
+  "references.category.characters": "Персонажи",
+  "references.category.lore": "Лор",
+  "references.category.weapons": "Оружие",
+  "references.category.locations": "Локации",
+  "references.category.misc": "Прочее",
+  "references.searchPlaceholder": "Поиск по ссылкам…",
+  "references.addNote": "Добавить заметку",
+
+  // Blockbench MCP (Этап 3): индикатор подключения к живому Blockbench.
+  "blockbench.label": "Blockbench",
+  "blockbench.connected": "Подключено",
+  "blockbench.disconnected": "Отключено",
+  "blockbench.connecting": "Подключение…",
+  "blockbench.error": "Ошибка подключения",
+  "blockbench.connect": "Подключить Blockbench",
+  "blockbench.disconnect": "Отключить Blockbench",
+  "blockbench.toolCount": "{count} инструментов",
+  "blockbench.connectFailed": "Не удалось подключиться к Blockbench: {error}",
+
+  // Minecraft Dev Bridge (Этап 4): MCP-сервер внутри dev-сборки мода.
+  // Lifecycle сложнее Blockbench: сначала запуск клиента, потом ожидание
+  // поднятия endpoint'а, потом подключение.
+  "minecraftBridge.label": "Minecraft",
+  "minecraftBridge.connected": "Подключено",
+  "minecraftBridge.disconnected": "Отключено",
+  "minecraftBridge.connecting": "Подключение…",
+  "minecraftBridge.error": "Ошибка подключения",
+  "minecraftBridge.connect": "Подключить Minecraft",
+  "minecraftBridge.disconnect": "Отключить Minecraft",
+  "minecraftBridge.toolCount": "{count} инструментов",
+  "minecraftBridge.connectFailed": "Не удалось подключиться к Minecraft bridge: {error}",
+  "minecraftBridge.waitingForClient": "Жду поднятия endpoint'а модом…",
+  "minecraftBridge.endpointNotFound": "MCP-endpoint мода не поднялся за {ms}мс. Проверь, что mineagent-bridge собран и включён в dev-клиенте.",
+  "minecraftBridge.noToken": "Токен моста не найден в логе dev-клиента. Убедись, что мод mineagent-bridge стартовал (ищи строку «[mineagent-bridge] MCP endpoint ready» в логе).",
+  "minecraftBridge.launchFirst": "Dev-клиент Minecraft не запущен — мод ещё не поднял MCP-endpoint. Запустить dev-клиент сейчас?",
+
+  // Vision + Critic (Этап 5)
+  "vision.label": "Vision",
+  "vision.evaluating": "Оцениваю артефакт через vision-модель…",
+  "vision.verdict.matches": "Артефакт соответствует ожиданию",
+  "vision.verdict.mismatch": "Артефакт НЕ соответствует ожиданию",
+  "vision.verdict.uncertain": "Vision-оценка не уверена",
+  "vision.noImages": "Нет изображений для vision-оценки",
+  "vision.disabled": "Vision-оценка выключена",
+
+  "critic.label": "Critic",
+  "critic.evaluating": "Critic оценивает артефакт…",
+  "critic.consensus": "Консенсус: применяю",
+  "critic.disagreement": "Разногласие между main и critic",
+  "critic.uncertain": "Critic не уверен",
+  "critic.apply": "Применить",
+  "critic.reject": "Отклонить",
+  "critic.decideSelf": "Решить самому",
+  "critic.selfCritiqueWarning": "Self-critique: critic работает на той же модели, что main — объективность ниже (те же слепые зоны тренировки).",
+  "critic.disabled": "Critic выключен",
+  "critic.mainOpinion": "Мнение main-агента",
+  "critic.criticOpinion": "Мнение critic",
+
+  "subagent.run": "Запустить sub-агента",
+
+  // Knowledge Base (Этап 6)
+  "knowledge.title": "База знаний",
+  "knowledge.empty": "База знаний пуста. Добавь записи через поиск или вручную.",
+  "knowledge.add": "Добавить запись",
+  "knowledge.search": "Поиск по базе",
+  "knowledge.searchPlaceholder": "Поиск по базе знаний…",
+  "knowledge.category": "Категория",
+  "knowledge.category.api": "API",
+  "knowledge.category.gameplay": "Геймплей",
+  "knowledge.category.rendering": "Рендеринг",
+  "knowledge.category.tools": "Инструменты",
+  "knowledge.category.assets": "Ассеты",
+  "knowledge.category.misc": "Прочее",
+  "knowledge.searchViaModel": "Найти через модель",
+  "knowledge.searchingViaModel": "Модель ищет источники для базы знаний…",
+  "knowledge.added": "Запись добавлена в базу знаний.",
+
+  // Skills (Этап 6)
+  "skills.title": "Скиллы",
+  "skills.empty": "Скиллов пока нет. Создай через ИИ или добавь .md в .mineagent/skills/.",
+  "skills.create": "Создать скилл через ИИ",
+  "skills.createPlaceholder": "Опиши тему скилла (например «регистрация предметов в Forge»)…",
+  "skills.creating": "Модель создаёт скилл…",
+  "skills.created": "Скилл «{name}» создан.",
+  "skills.matched": "Выбранные скиллы для задачи",
+  "skills.pin": "Закрепить",
+  "skills.unpin": "Открепить",
+  "skills.delete": "Удалить",
+  "skills.deleteConfirm": "Удалить скилл «{name}»?",
+  "skills.readonly": "Защищён"
+};

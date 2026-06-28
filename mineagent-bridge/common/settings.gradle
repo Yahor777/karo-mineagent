@@ -1,0 +1,5 @@
+// Изолирующий settings для common/: чтобы прогон тестов common не подхватывал
+// корневой mineagent-bridge/settings.gradle (который include'ает fabric/
+// neoforge/ forge и тянет их Gradle-плагины — Loom/ModDevGradle/ForgeGradle).
+// common — чистая java-library без Minecraft-зависимостей.
+rootProject.name = "mineagent-bridge-common"

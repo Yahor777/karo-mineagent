@@ -1,0 +1,6 @@
+// NeoForge 1.21.1 подпроект mineagent-bridge. Отдельный settings/wrapper:
+// ModDevGradle (NeoForge) требует свою версию Gradle и свой plugin-classpath.
+rootProject.name = "mineagent-bridge-neoforge"
+
+// common — ядро без Minecraft, java-library. Включаем как composite-build.
+includeBuild "../common"
