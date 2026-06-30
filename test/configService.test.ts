@@ -210,6 +210,30 @@ describe("ConfigService", () => {
     }
   });
 
+  it("Этап 4: legacy minecraft.devBridgeEnabled включает mcp.minecraft.enabled", async () => {
+    const root = await mkdtemp(join(tmpdir(), "mineagent-config-mc-legacy-bridge-"));
+    try {
+      await mkdir(join(root, ".mineagent"), { recursive: true });
+      await writeFile(join(root, ".mineagent", "config.json"), `${JSON.stringify({
+        version: 1,
+        providers: { defaultProvider: "cloudflare", defaultModel: "m", custom: { baseUrl: "", modelsEndpoint: "/v1/models", chatEndpoint: "/v1/chat/completions" } },
+        agent: { approvalMode: "ask", autoApproveTools: [] },
+        minecraft: { gradleBuildTask: "build", runClientTask: "runClient", devBridgeEnabled: true },
+        paths: {}
+      })}\n`, "utf8");
+
+      const service = new ConfigService(fakeContext(), {
+        uri: { fsPath: root, toString: () => `file://${root}` }
+      } as never);
+
+      const config = await service.ensureWorkspaceFiles();
+      assert.equal(config.minecraft.devBridgeEnabled, true);
+      assert.equal(config.mcp.minecraft.enabled, true);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("Этап 4: пользовательский mcp.minecraft сохраняется при merge", async () => {
     const root = await mkdtemp(join(tmpdir(), "mineagent-config-mc-mcp-custom-"));
     try {

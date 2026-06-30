@@ -91,6 +91,42 @@ public class KaroTest {
     }
   });
 
+  it("uses provider-suggested replacement for an explicit deprecated model", async () => {
+    const root = join(tmpdir(), `mineagent-orchestrator-replacement-${Date.now()}`);
+    const provider = new FakeProvider();
+    provider.deprecatedModel = "kimi-k2.5";
+    provider.replacementModel = "kimi-k2.6";
+    provider.models = ["kimi-k2.5", "kimi-k2.6"];
+    provider.responsesByModel.set("kimi-k2.6", "replacement ok");
+    try {
+      await write(root, "gradle.properties", "minecraft_version=1.20.1\njava_version=17\n");
+      await write(root, "build.gradle", "plugins { id 'net.minecraftforge.gradle' version '6.0.+' }\n");
+      await write(root, "src/main/resources/META-INF/mods.toml", 'modId="karo_test"\n');
+
+      const orchestrator = new MineAgentOrchestrator(root, {
+        ...defaultMineAgentConfig,
+        providers: {
+          ...defaultMineAgentConfig.providers,
+          defaultProvider: "fireworks",
+          defaultModel: "kimi-k2.5",
+          routineModel: "",
+          complexModel: ""
+        }
+      }, {
+        get: async () => provider,
+        providerStatuses: async () => [{ id: "fireworks", hasKey: true }]
+      } as never);
+
+      const report = await orchestrator.run({ prompt: "check replacement", mode: "ask" });
+
+      assert.match(report.summary, /^replacement ok/);
+      assert.match(report.summary, /kimi-k2\.6/);
+      assert.deepEqual(provider.requestedModels, ["kimi-k2.5", "kimi-k2.6"]);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("treats empty provider responses as failed runs", async () => {
     const root = join(tmpdir(), `mineagent-orchestrator-empty-${Date.now()}`);
     const provider = new FakeProvider();
@@ -274,6 +310,47 @@ public class KaroTest {
     }
   });
 
+  it("passes AGENTS.md workspace rules to the main system prompt", async () => {
+    const root = join(tmpdir(), `mineagent-orchestrator-rules-${Date.now()}`);
+    const provider = new FakeProvider();
+    try {
+      await write(root, "gradle.properties", "minecraft_version=1.20.1\njava_version=17\n");
+      await write(root, "build.gradle", "plugins { id 'net.minecraftforge.gradle' version '6.0.+' }\n");
+      await write(root, "src/main/resources/META-INF/mods.toml", 'modId="rules_test"\n');
+
+      const orchestrator = new MineAgentOrchestrator(root, {
+        ...defaultMineAgentConfig,
+        providers: {
+          ...defaultMineAgentConfig.providers,
+          defaultProvider: "fireworks",
+          defaultModel: "accounts/fireworks/models/kimi-k2p7-code",
+          routineModel: "",
+          complexModel: ""
+        }
+      }, {
+        get: async () => provider,
+        providerStatuses: async () => [{ id: "fireworks", hasKey: true }]
+      } as never);
+
+      await orchestrator.run({
+        prompt: "Проверь правила проекта",
+        mode: "ask",
+        rules: [
+          "# MineAgent Workspace Rules",
+          "- Prefer repository evidence over memory.",
+          "- Always verify Forge APIs before editing."
+        ].join("\n")
+      });
+
+      const systemPrompt = extractTextFromContent(provider.lastRequest?.messages[0]?.content ?? "");
+      assert.match(systemPrompt, /Workspace Rules \(AGENTS\.md\)/);
+      assert.match(systemPrompt, /Prefer repository evidence over memory/);
+      assert.match(systemPrompt, /Always verify Forge APIs before editing/);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("emits budgetExceeded via onActivity after the model finishes, without interrupting the run", async () => {
     const root = join(tmpdir(), `mineagent-orchestrator-budget-${Date.now()}`);
     const provider = new FakeProvider();
@@ -394,6 +471,8 @@ class FakeProvider implements ProviderAdapter {
   public readonly displayName = "Fireworks AI";
   public lastRequest?: ChatRequest;
   public failModel?: string;
+  public deprecatedModel?: string;
+  public replacementModel?: string;
   public responseContent = "Ответ fake provider";
   public responsesByModel = new Map<string, string>();
   public models = ["accounts/fireworks/models/kimi-k2p7-code"];
@@ -404,6 +483,13 @@ class FakeProvider implements ProviderAdapter {
   public async chat(request: ChatRequest) {
     this.lastRequest = request;
     this.requestedModels.push(request.model);
+    if (request.model === this.deprecatedModel) {
+      throw new ProviderRequestError(
+        this.displayName,
+        410,
+        `Model "${request.model}" is no longer available. Use "${this.replacementModel}" instead.`
+      );
+    }
     if (request.model === this.failModel) {
       throw new ProviderRequestError(this.displayName, 404, "Model not found", "NOT_FOUND", "model");
     }

@@ -718,6 +718,61 @@ const kimchiModels: ProviderModel[] = [
   }
 ];
 
+function customModelsFromConfig(config: MineAgentConfig): ProviderModel[] {
+  const ids = [
+    config.providers.defaultModel,
+    config.providers.routineModel,
+    config.providers.complexModel
+  ]
+    .map((id) => id?.trim())
+    .filter((id): id is string => Boolean(id));
+
+  return Array.from(new Set(ids)).map((id) => ({
+    id,
+    label: id,
+    provider: "custom",
+    vendor: guessVendor(id),
+    category: guessModelCategory(id),
+    apiType: "text",
+    capabilities: {
+      contextWindow: guessContextWindow(id),
+      vision: /vision|vl|omni|gpt-4o|kimi|gemini|claude/i.test(id),
+      tools: true,
+      jsonMode: true,
+      reasoning: /reason|thinking|deepseek|glm|kimi|qwen|gpt-5/i.test(id),
+      fixedContext: true,
+      costHint: "medium",
+      codingQuality: /code|coder|kimi|qwen|deepseek|glm|gpt/i.test(id) ? "frontier" : "strong",
+      speed: /flash|mini|fast|haiku|m2/i.test(id) ? "fast" : "medium"
+    }
+  }));
+}
+
+function guessVendor(id: string): ProviderModel["vendor"] {
+  if (/kimi|moonshot/i.test(id)) return "moonshotai";
+  if (/qwen/i.test(id)) return "qwen";
+  if (/deepseek/i.test(id)) return "deepseek";
+  if (/glm|z-ai|zai/i.test(id)) return "zai";
+  if (/openai|gpt/i.test(id)) return "openai";
+  if (/meta|llama/i.test(id)) return "meta";
+  if (/google|gemini/i.test(id)) return "google";
+  return "other";
+}
+
+function guessModelCategory(id: string): ProviderModel["category"] {
+  if (/flash|mini|fast|haiku|m2/i.test(id)) return "fast";
+  if (/vision|vl|omni/i.test(id)) return "vision";
+  if (/reason|thinking|deepseek|glm/i.test(id)) return "reasoning";
+  return "flagship";
+}
+
+function guessContextWindow(id: string): number {
+  if (/m3|glm-5|qwen|gemini/i.test(id)) return 1_000_000;
+  if (/kimi|moonshot/i.test(id)) return 262_144;
+  if (/gpt-5/i.test(id)) return 400_000;
+  return 131_072;
+}
+
 export class ProviderRegistry {
   public constructor(
     private readonly configService: ConfigService,
@@ -781,7 +836,7 @@ export class ProviderRegistry {
           displayName: "Custom OpenAI-Compatible",
           baseUrl: config.providers.custom.baseUrl,
           apiKey,
-          defaultModels: [],
+          defaultModels: customModelsFromConfig(config),
           chatEndpoint: config.providers.custom.chatEndpoint,
           modelsEndpoint: config.providers.custom.modelsEndpoint
         });

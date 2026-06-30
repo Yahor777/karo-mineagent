@@ -169,8 +169,10 @@
             <button class="text-button" id="refreshProviderModels">Обновить модели</button>
           </div>
           <select id="providerSelect" class="select compact-input" aria-label="Провайдер">
-            <option value="cloudflare" selected>Cloudflare Workers AI</option>
+            <option value="cloudflare">Cloudflare Workers AI</option>
             <option value="fireworks">Fireworks AI</option>
+            <option value="wavespeed">WaveSpeed AI</option>
+            <option value="kimchi">Kimchi (Kimi)</option>
             <option value="openai">OpenAI</option>
             <option value="anthropic">Anthropic</option>
             <option value="custom">Custom OpenAI-compatible</option>
@@ -249,6 +251,7 @@
         <div class="approval-modal-buttons">
           <button class="primary-button" id="approvalConfirmOnce">Подтвердить один раз</button>
           <button class="primary-button secondary" id="approvalAlwaysInSession">Всегда в этой сессии</button>
+          <button class="primary-button secondary" id="approvalAlwaysAll">Всегда (все инструменты в сессии)</button>
           <button class="primary-button secondary" id="approvalAlways">Всегда</button>
           <button class="primary-button secondary danger" id="approvalDeny">Отклонить</button>
         </div>
@@ -324,7 +327,7 @@
   ],
   "rules": "# MineAgent Workspace Rules\n\nPreview uses mocked workspace data.\n",
   "projectMap": {
-    "indexedAt": "2026-06-24T13:40:46.612Z",
+    "indexedAt": "2026-06-29T11:43:54.547Z",
     "root": "D:/projects/karo-mine-test",
     "loader": "forge",
     "minecraftVersion": "1.20.1",
@@ -380,7 +383,7 @@
   "referenceRequests": [
     {
       "query": "Forge 1.20.1 capability lifecycle",
-      "createdAt": "2026-06-24T13:37:46.613Z",
+      "createdAt": "2026-06-29T11:40:54.548Z",
       "status": "нужно подтверждение"
     }
   ],
@@ -389,8 +392,8 @@
       "command": "gradlew build",
       "cwd": "D:/projects/karo-mine-test",
       "exitCode": 0,
-      "startedAt": "2026-06-24T13:40:34.613Z",
-      "completedAt": "2026-06-24T13:40:46.613Z",
+      "startedAt": "2026-06-29T11:43:42.548Z",
+      "completedAt": "2026-06-29T11:43:54.548Z",
       "stdout": "> Task :compileJava\n> Task :processResources\nBUILD SUCCESSFUL",
       "stderr": ""
     }

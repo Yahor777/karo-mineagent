@@ -216,6 +216,11 @@ function providerEnvNames(providerId: ProviderId): string[] {
 }
 
 function mergeConfig(partial: Partial<MineAgentConfig>): MineAgentConfig {
+  const minecraftBridgeEnabled = typeof partial.mcp?.minecraft?.enabled === "boolean"
+    ? partial.mcp.minecraft.enabled
+    : typeof partial.minecraft?.devBridgeEnabled === "boolean"
+      ? partial.minecraft.devBridgeEnabled
+      : defaultMineAgentConfig.mcp.minecraft.enabled;
   return {
     ...defaultMineAgentConfig,
     ...partial,
@@ -269,7 +274,8 @@ function mergeConfig(partial: Partial<MineAgentConfig>): MineAgentConfig {
     subAgents: Array.isArray(partial.subAgents) ? partial.subAgents : defaultMineAgentConfig.subAgents,
     minecraft: {
       ...defaultMineAgentConfig.minecraft,
-      ...partial.minecraft
+      ...partial.minecraft,
+      devBridgeEnabled: minecraftBridgeEnabled
     },
     // Этап 3/4: backward-compat мерж для секции mcp. Старые config.json без этих
     // полей (blockbench — Этап 3, minecraft — Этап 4) получают дефолтные значения
@@ -285,7 +291,8 @@ function mergeConfig(partial: Partial<MineAgentConfig>): MineAgentConfig {
       },
       minecraft: {
         ...defaultMineAgentConfig.mcp.minecraft,
-        ...partial.mcp?.minecraft
+        ...partial.mcp?.minecraft,
+        enabled: minecraftBridgeEnabled
       }
     },
     paths: {

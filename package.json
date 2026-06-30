@@ -23,6 +23,7 @@
   ],
   "main": "./out/src/extension.js",
   "activationEvents": [
+    "onStartupFinished",
     "onView:mineagent.workbench",
     "onCommand:mineagent.openWorkbench",
     "onCommand:mineagent.initializeWorkspace",
@@ -91,15 +92,17 @@
             "openai",
             "anthropic",
             "fireworks",
+            "wavespeed",
+            "kimchi",
             "cloudflare",
             "custom"
           ],
-          "default": "cloudflare",
+          "default": "custom",
           "description": "Default AI provider used by MineAgent."
         },
         "mineagent.defaultModel": {
           "type": "string",
-          "default": "@cf/moonshotai/kimi-k2.7-code",
+          "default": "kimi-k2.7",
           "description": "Default model id. Leave empty to use the provider default."
         },
         "mineagent.approvalMode": {
@@ -114,7 +117,7 @@
         },
         "mineagent.customProviderBaseUrl": {
           "type": "string",
-          "default": "",
+          "default": "https://llm.kimchi.dev/openai/v1",
           "description": "Base URL for a custom OpenAI-compatible provider."
         },
         "mineagent.cloudflareAccountId": {

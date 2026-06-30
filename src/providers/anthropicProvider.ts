@@ -183,7 +183,7 @@ interface AnthropicMessage {
   content: string | AnthropicBlock[];
 }
 
-function extractSystemPrompt(messages: ChatMessage[]): string | undefined {
+export function extractSystemPrompt(messages: ChatMessage[]): string | undefined {
   const system = messages.find((message) => message.role === "system");
   if (!system) {
     return undefined;
@@ -192,7 +192,7 @@ function extractSystemPrompt(messages: ChatMessage[]): string | undefined {
   return text.trim() ? text : undefined;
 }
 
-function toAnthropicMessages(messages: ChatMessage[]): AnthropicMessage[] {
+export function toAnthropicMessages(messages: ChatMessage[]): AnthropicMessage[] {
   const out: AnthropicMessage[] = [];
   for (const message of messages) {
     if (message.role === "system") {
@@ -262,7 +262,7 @@ function toUserContent(content: string | ContentBlock[]): string | AnthropicBloc
   return blocks;
 }
 
-function toImageSource(url: string): AnthropicImageSource {
+export function toImageSource(url: string): AnthropicImageSource {
   // data URL (data:image/png;base64,XXXX) → base64-блок Anthropic.
   const match = /^data:([^;]+);base64,(.*)$/s.exec(url);
   if (match) {

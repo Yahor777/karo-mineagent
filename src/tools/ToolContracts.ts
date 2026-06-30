@@ -51,7 +51,16 @@ export const toolContracts: ToolContract[] = [
   contract<{ url: string; targetDir?: string }, CommandEvidence>("github.clone", "Clone a GitHub repository.", "command", true),
   contract<{ owner: string; repo: string; title: string; head: string; base: string; body?: string }, { number: number; url: string; state: string }>("github.pr", "Open a GitHub pull request.", "network", true),
   // Фаза 2 (P2.3): агент пишет находки/решения в живую память проекта.
-  contract<{ text: string; section?: string }, { written: boolean }>("memory.note", "Append a durable note/decision to project memory (project.md).", "write", false)
+  contract<{ text: string; section?: string }, { written: boolean }>("memory.note", "Append a durable note/decision to project memory (project.md).", "write", false),
+  // Инструмент создания/инициализации нового проекта мода
+  contract<{
+    loader: "forge" | "fabric" | "neoforge";
+    minecraftVersion: string;
+    modId: string;
+    groupId?: string;
+    version?: string;
+    javaVersion?: string;
+  }, { success: boolean; rootDir: string }>("project.create", "Scaffold a new Minecraft mod project (Forge, Fabric, or NeoForge) in the workspace.", "write", true)
 ];
 
 function contract<Input, Output>(

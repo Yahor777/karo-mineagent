@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { OpenAICompatibleProvider } from "../src/providers/openaiCompatibleProvider";
+import { OpenAICompatibleProvider, ProviderRequestError } from "../src/providers/openaiCompatibleProvider";
 
 // Провайдер с голым OpenAI-compat URL (без обёртки Cloudflare) — тестируем
 // парсер tool_calls напрямую. Это Этап 2: провайдер должен уметь разбирать
@@ -39,6 +39,17 @@ function mockFetchOnce(body: unknown): {
 }
 
 describe("OpenAICompatibleProvider — tool_calls парсинг", () => {
+  it("treats Kimchi 410 deprecated model responses as model-unavailable with replacement", () => {
+    const error = new ProviderRequestError(
+      "Custom OpenAI-Compatible",
+      410,
+      'Model "kimi-k2.5" is no longer available. Use "kimi-k2.6" instead.'
+    );
+
+    assert.equal(error.isModelNotFound(), true);
+    assert.equal(error.suggestedReplacementModel(), "kimi-k2.6");
+  });
+
   it("парсит OpenAI-shape tool_calls (arguments = JSON-строка)", async () => {
     const mock = mockFetchOnce({
       id: "chatcmpl-1",

@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import { spawn } from "node:child_process";
 import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { ConfigService } from "../config/configService";
 import type { ProviderId, ResearchLedger, MineAgentConfig } from "../config/types";
 import { MineAgentOrchestrator, type RunReport } from "../orchestrator/orchestrator";
@@ -38,8 +39,11 @@ import { MinecraftBridge } from "../mcp/minecraftBridge";
 import type { McpServerContext, RunResult } from "../mcp/mcpServerTools";
 import { VisionEvaluator } from "../orchestrator/visionEvaluator";
 import { CriticRunner } from "../orchestrator/criticRunner";
+import { PreflightProbe } from "../providers/preflightProbe";
 import { parseBridgeReadyLine } from "../tools/logParser";
 import { getWorkbenchHtml } from "./html";
+import { Scaffolder } from "../scaffolder/scaffolder";
+import { GradleDownloader } from "../utils/gradleDownloader";
 
 interface WebviewState {
   projectMap?: ProjectMap;
@@ -54,6 +58,7 @@ export class MineAgentWebviewProvider implements vscode.WebviewViewProvider {
   private currentRunAbort?: AbortController;
   // Token-бюджет живёт весь lifetime webview-провайдера (т.е. вся сессия VS Code).
   private readonly tokenBudget = new TokenBudgetService();
+  private readonly preflight = new PreflightProbe();
   // Session persistence: сохраняет chat history между перезапусками VS Code.
   // Инициализируется в конструкторе — нужен configService.workspaceRoot.
   private readonly sessions: SessionService;
@@ -122,6 +127,7 @@ export class MineAgentWebviewProvider implements vscode.WebviewViewProvider {
     const config = await this.configService.ensureWorkspaceFiles();
     // Registry: handlers для tools, которые реально вызываются сейчас.
     const root = this.configService.workspaceRoot.fsPath;
+    void this.ensureBridgeWrappers(root);
     // Этап 1 (новое): базовые read-only «руки» — ИИ видит проект перед изменениями.
     this.registry.register("repo.read", async (input) => {
       const rel = String((input as { path?: string })?.path ?? "");
@@ -190,6 +196,30 @@ export class MineAgentWebviewProvider implements vscode.WebviewViewProvider {
       const r = input as { text?: string; section?: "conventions" | "content" | "decisions" | "open" };
       const written = await this.projectMemory.appendToSection(r.section ?? "decisions", String(r.text ?? ""), "agent");
       return { written };
+    });
+    // Создание/скаффолдинг проекта мода
+    this.registry.register("project.create", async (input) => {
+      const r = input as {
+        loader: "forge" | "fabric" | "neoforge";
+        minecraftVersion: string;
+        modId: string;
+        groupId?: string;
+        version?: string;
+        javaVersion?: string;
+      };
+      if (!r.loader || !r.minecraftVersion || !r.modId) {
+        throw new Error("Необходимые параметры: loader, minecraftVersion, modId.");
+      }
+      await Scaffolder.scaffold({
+        rootDir: root,
+        loader: r.loader,
+        minecraftVersion: r.minecraftVersion,
+        modId: r.modId,
+        groupId: r.groupId,
+        version: r.version,
+        javaVersion: r.javaVersion
+      });
+      return { success: true, rootDir: root };
     });
     // Этап 2: диагностика сборки и крашей — ИИ получает структурированные ошибки.
     this.registry.register("build.diagnose", async (input) => {
@@ -348,6 +378,22 @@ export class MineAgentWebviewProvider implements vscode.WebviewViewProvider {
     );
   }
 
+  private async ensureBridgeWrappers(root: string): Promise<void> {
+    try {
+      const fs = require("node:fs");
+      const bridgePath = join(root, "mineagent-bridge");
+      if (fs.existsSync(bridgePath)) {
+        await Promise.all([
+          GradleDownloader.ensureWrapper(join(bridgePath, "fabric")),
+          GradleDownloader.ensureWrapper(join(bridgePath, "forge")),
+          GradleDownloader.ensureWrapper(join(bridgePath, "neoforge"))
+        ]);
+      }
+    } catch (error) {
+      console.error("Не удалось настроить Gradle Wrapper для mineagent-bridge:", error);
+    }
+  }
+
   private async resumeLatestSession(): Promise<void> {
     try {
       const latest = await this.sessions.latestSession();
@@ -476,7 +522,10 @@ export class MineAgentWebviewProvider implements vscode.WebviewViewProvider {
           await this.testProvider("fireworks");
           break;
         case "testProvider":
-          await this.testProvider(parseProviderId((message.payload as { provider?: string })?.provider));
+          await this.testProvider(
+            parseProviderId((message.payload as { provider?: string })?.provider),
+            String((message.payload as { model?: string })?.model ?? "")
+          );
           break;
         case "runGradleBuild":
           await this.runGradle("build");
@@ -711,9 +760,8 @@ export class MineAgentWebviewProvider implements vscode.WebviewViewProvider {
 
   private async selectProviderModel(providerId: ProviderId, model: string): Promise<void> {
     const config = await this.configService.ensureWorkspaceFiles();
-    const chosenModel = model.trim() || fallbackModelForProvider(providerId);
-    // ФИКС: при ручном выборе модели сбрасываем routineModel/complexModel,
-    // чтобы auto-tiering не подменял выбор пользователя на дефолтную дорогую модель.
+    const chosenModel = model.trim();
+    const manualSelection = Boolean(chosenModel);
     const nextConfig = {
       ...config,
       providers: {
@@ -725,7 +773,11 @@ export class MineAgentWebviewProvider implements vscode.WebviewViewProvider {
       }
     };
     await this.configService.writeConfig(nextConfig);
-    vscode.window.showInformationMessage(`MineAgent использует ${providerId} / ${chosenModel}.`);
+    vscode.window.showInformationMessage(
+      manualSelection
+        ? `MineAgent использует ${providerId} / ${chosenModel}.`
+        : `MineAgent использует ${providerId} / Auto.`
+    );
     await this.refresh();
   }
 
@@ -733,7 +785,7 @@ export class MineAgentWebviewProvider implements vscode.WebviewViewProvider {
     await this.testProvider("fireworks");
   }
 
-  public async testProvider(providerId?: ProviderId): Promise<void> {
+  public async testProvider(providerId?: ProviderId, modelOverride?: string): Promise<void> {
     const config = await this.configService.ensureWorkspaceFiles();
     const selectedProvider = providerId ?? config.providers.defaultProvider;
     const provider = await this.providers.get(selectedProvider);
@@ -742,22 +794,36 @@ export class MineAgentWebviewProvider implements vscode.WebviewViewProvider {
       message: `Проверяю ${provider.displayName}: получаю список моделей.`
     });
     const models = await provider.listModels();
-    const candidates = selectModelCandidates(config.providers.defaultModel, models, selectedProvider);
+    const explicitModel = modelOverride?.trim();
+    const configuredModel = explicitModel ? explicitModel : selectedProvider === config.providers.defaultProvider
+      ? tierModelForMode(config, "ask")
+      : "";
+    const candidates = selectModelCandidates(configuredModel, models, selectedProvider);
     if (!candidates.length) {
       throw new Error(`${provider.displayName}: ключ работает, но список моделей пуст.`);
     }
 
     let lastError: unknown;
-    for (const model of candidates) {
+    const tried = new Set<string>();
+    const queue = [...candidates];
+    for (let index = 0; index < queue.length; index += 1) {
+      const model = queue[index]!;
+      if (tried.has(model)) {
+        continue;
+      }
+      tried.add(model);
       try {
+        const modelMeta = models.find((item) => item.id === model);
+        const isReasoning = Boolean(modelMeta?.capabilities.reasoning);
         this.post("agentActivity", {
           status: "progress",
           message: `Отправляю короткий тестовый запрос в ${provider.displayName}: ${model}.`
         });
-        const response = await provider.chat({
+        let response = await provider.chat({
           model,
           temperature: 0,
-          maxTokens: 32,
+          maxTokens: isReasoning ? 4096 : 256,
+          reasoning_effort: isReasoning ? "low" : undefined,
           messages: [
             {
               role: "user",
@@ -765,6 +831,24 @@ export class MineAgentWebviewProvider implements vscode.WebviewViewProvider {
             }
           ]
         });
+        if (!response.content.trim() && extractFinishReason(response.raw) === "length") {
+          this.post("agentActivity", {
+            status: "progress",
+            message: `Модель ${model} обрезала короткий тест по max_tokens. Повторяю с большим лимитом.`
+          });
+          response = await provider.chat({
+            model,
+            temperature: 0,
+            maxTokens: isReasoning ? 8192 : 1024,
+            reasoning_effort: isReasoning ? "low" : undefined,
+            messages: [
+              {
+                role: "user",
+                content: "Ответь ровно одним словом без рассуждений: ok"
+              }
+            ]
+          });
+        }
         if (!response.content.trim()) {
           lastError = new Error(`${provider.displayName} returned an empty response for ${model}. ${describeRawResponseShape(response.raw)}`);
           continue;
@@ -778,8 +862,21 @@ export class MineAgentWebviewProvider implements vscode.WebviewViewProvider {
         return;
       } catch (error) {
         lastError = error;
+        // Запускаем фоновую preflight-пробу, чтобы пометить модель как неисправную в кэше
+        this.preflight.probe(provider, model).then(() => {
+          void this.refreshProviderModels(selectedProvider, { silent: true });
+        }).catch(() => {});
+
         if (!(error instanceof ProviderRequestError) || !error.isModelNotFound()) {
           throw error;
+        }
+        const replacement = error.suggestedReplacementModel();
+        if (replacement && !tried.has(replacement)) {
+          this.post("agentActivity", {
+            status: "progress",
+            message: `Модель ${model} устарела. Пробую предложенную замену: ${replacement}.`
+          });
+          queue.splice(index + 1, 0, replacement);
         }
       }
     }
@@ -801,12 +898,18 @@ export class MineAgentWebviewProvider implements vscode.WebviewViewProvider {
       });
     }
     const models = await provider.listModels();
-    this.state.providerModelsByProvider[selectedProvider] = models;
+    const annotatedModels = this.preflight.annotate(models);
+    this.state.providerModelsByProvider[selectedProvider] = annotatedModels;
     this.post("providerModels", {
       provider: selectedProvider,
-      models,
+      models: annotatedModels,
       silent: Boolean(options?.silent)
     });
+
+    // Сбрасываем кэш префлайта при принудительном обновлении моделей, чтобы убрать устаревшие статусы ошибок
+    if (!options?.silent) {
+      this.preflight.invalidate();
+    }
   }
 
   private async refreshConfiguredProviderModels(): Promise<void> {
@@ -870,7 +973,7 @@ export class MineAgentWebviewProvider implements vscode.WebviewViewProvider {
     }
     this.post("agentActivity", {
       status: "started",
-      message: `Принял запрос. Режим: ${mode}; провайдер: ${config.providers.defaultProvider}; модель: ${tierModelForMode(config, mode)}.`
+      message: `Принял запрос. Режим: ${mode}; провайдер: ${config.providers.defaultProvider}; модель: ${tierModelForMode(config, mode) || "Auto"}.`
     });
     try {
       // Этап 5: создаются опциональные vision/critic сервисы если включены в config.
@@ -895,10 +998,12 @@ export class MineAgentWebviewProvider implements vscode.WebviewViewProvider {
             mainModel: config.providers.complexModel || config.providers.defaultModel
           })
         : undefined;
-      const orchestrator = new MineAgentOrchestrator(this.configService.workspaceRoot.fsPath, config, this.providers, this.tokenBudget, this.dispatcher, this.blockbenchBridge, this.minecraftBridge, visionEvaluator, criticRunner, this.skillService, this.knowledgeBase, this.projectMemory);
+      const orchestrator = new MineAgentOrchestrator(this.configService.workspaceRoot.fsPath, config, this.providers, this.tokenBudget, this.dispatcher, this.blockbenchBridge, this.minecraftBridge, visionEvaluator, criticRunner, this.skillService, this.knowledgeBase, this.projectMemory, this.preflight);
+      const rules = await this.configService.readAgentsRules();
       const report = await orchestrator.run({
         prompt,
         mode,
+        rules,
         researchLedger: this.state.researchLedger,
         signal: abort.signal,
         onActivity: (event) => {
@@ -923,10 +1028,30 @@ export class MineAgentWebviewProvider implements vscode.WebviewViewProvider {
           // Ошибка сохранения не должна валить основной flow.
         });
       }
+    } catch (error) {
+      // Обновляем модели в фоне, чтобы пометить битую модель
+      void this.refreshProviderModels(config.providers.defaultProvider, { silent: true }).catch(() => {});
+      const msg = error instanceof Error ? error.message : String(error);
+      const choice = await vscode.window.showErrorMessage(
+        `Сбой запуска MineAgent: ${msg}`,
+        "Повторить",
+        "Выбрать другую модель",
+        "Отмена"
+      );
+      if (choice === "Повторить") {
+        this.currentRunAbort = undefined;
+        void this.startRun(prompt, mode);
+        return;
+      } else if (choice === "Выбрать другую модель") {
+        this.post("notice", "Пожалуйста, выберите другую модель в селекторе моделей внизу панели MineAgent.");
+      }
+      throw error;
     } finally {
-      this.currentRunAbort = undefined;
-      this.post("runFinished", {});
-      this.post("tokenBudget", this.tokenBudget.snapshot());
+      if (this.currentRunAbort === abort) {
+        this.currentRunAbort = undefined;
+        this.post("runFinished", {});
+        this.post("tokenBudget", this.tokenBudget.snapshot());
+      }
     }
   }
 
@@ -1098,16 +1223,29 @@ export class MineAgentWebviewProvider implements vscode.WebviewViewProvider {
   // Возвращает true, если запуск инициирован. Учитывает launchPrompt:
   //   "always" — запускаем без вопроса; "never" — не предлагаем; иначе спрашиваем.
   private async offerLaunchDevClient(): Promise<boolean> {
+    const fs = require("node:fs");
+    const hasBuildGradle = fs.existsSync(join(this.configService.workspaceRoot.fsPath, "build.gradle")) 
+      || fs.existsSync(join(this.configService.workspaceRoot.fsPath, "build.gradle.kts"));
+    if (!hasBuildGradle) {
+      this.post("notice", "Проект еще не создан (отсутствует build.gradle). Пожалуйста, сначала попросите агента инициализировать мод (например: 'Создай новый NeoForge мод 1.21.1').");
+      return false;
+    }
+
     const config = await this.configService.readConfig();
     const mode = config?.mcp.minecraft.launchPrompt ?? "ask";
     if (mode === "never") {
       this.post("notice", "Dev-клиент Minecraft не запущен. Запусти его через меню Инструменты → Run Client, чтобы мод поднял MCP-endpoint.");
       return false;
     }
+    
+    const task = config?.minecraft.runClientTask ?? "runClient";
+    const wrapper = process.platform === "win32" ? ".\\gradlew.bat" : "./gradlew";
+    const commandStr = `${wrapper} ${task}`;
+
     if (mode !== "always") {
       const choice = await vscode.window.showInformationMessage(
-        "Dev-клиент Minecraft не запущен — мод ещё не поднял MCP-endpoint. Запустить dev-клиент сейчас?",
-        "Запустить dev-клиент",
+        `Dev-клиент Minecraft не запущен — мод ещё не поднял MCP-endpoint. Запустить команду "${commandStr}" в терминале VS Code?`,
+        "Запустить",
         "Не сейчас",
         "Больше не спрашивать"
       );
@@ -1115,17 +1253,33 @@ export class MineAgentWebviewProvider implements vscode.WebviewViewProvider {
         await this.setMinecraftLaunchPrompt("never");
         return false;
       }
-      if (choice !== "Запустить dev-клиент") {
+      if (choice !== "Запустить") {
         return false;
       }
     }
-    // Запускаем runClient через зарегистрированный handler (тот же, что вызывает
-    // модель), чтобы запуск шёл единым путём и логировался как evidence.
-    const task = config?.minecraft.runClientTask ?? "runClient";
-    this.post("notice", "Запускаю dev-клиент Minecraft (gradle runClient)… это может занять до минуты.");
-    void new GradleTools(this.configService.workspaceRoot.fsPath).runClient(task)
-      .then((evidence) => this.addEvidence(evidence))
-      .catch((error) => this.post("notice", humanizeWorkbenchError(error)));
+
+    this.post("notice", `Запускаю команду "${commandStr}" в терминале VS Code… это может занять до минуты.`);
+    
+    try {
+      const terminal = vscode.window.terminals.find(t => t.name === "MineAgent Minecraft") 
+        || vscode.window.createTerminal("MineAgent Minecraft");
+      terminal.show();
+      terminal.sendText(commandStr);
+
+      this.addEvidence({
+        command: commandStr,
+        cwd: this.configService.workspaceRoot.fsPath,
+        exitCode: null,
+        startedAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+        stdout: "[Команда запущена в интегрированном терминале VS Code]",
+        stderr: ""
+      });
+    } catch (error) {
+      this.post("notice", humanizeWorkbenchError(error));
+      return false;
+    }
+
     return true;
   }
 
@@ -1514,6 +1668,16 @@ function describeRawResponseShape(raw: unknown): string {
   return details.join("; ");
 }
 
+function extractFinishReason(raw: unknown): string | undefined {
+  if (!raw || typeof raw !== "object") {
+    return undefined;
+  }
+  const record = raw as Record<string, unknown>;
+  const firstChoice = Array.isArray(record.choices) ? record.choices[0] as Record<string, unknown> | undefined : undefined;
+  const finishReason = firstChoice?.finish_reason;
+  return typeof finishReason === "string" ? finishReason : undefined;
+}
+
 function extractDiffBlocks(text: string): string {
   const blocks = Array.from(text.matchAll(/```(?:diff|patch)?\s*\r?\n([\s\S]*?)```/gi))
     .map((match) => match[1]?.trim())
@@ -1672,9 +1836,11 @@ function parseProviderId(value: string | undefined): ProviderId | undefined {
 
 function selectModelCandidates(configuredModel: string | undefined, models: ProviderModel[], providerId: ProviderId): string[] {
   const ids = models.map((model) => model.id).filter(Boolean);
+  if (configuredModel?.trim()) {
+    return [configuredModel.trim()];
+  }
   const preferred = ids.filter((id) => /kimi|code|coder|deepseek|qwen/i.test(id));
   return Array.from(new Set([
-    configuredModel?.trim(),
     ...preferred,
     ...ids,
     fallbackModelForProvider(providerId)
@@ -1704,7 +1870,7 @@ function fallbackModelForProvider(providerId: ProviderId): string {
 // ask → routineModel (дешёвая), build/plan/playtest → complexModel (дорогая).
 function tierModelForMode(config: MineAgentConfig, mode: "ask" | "plan" | "build" | "playtest"): string {
   const providers = config.providers;
-  const fallback = providers.defaultModel || fallbackModelForProvider(providers.defaultProvider);
+  const fallback = providers.defaultModel;
   if (mode === "ask") {
     return providers.routineModel?.trim() || fallback;
   }

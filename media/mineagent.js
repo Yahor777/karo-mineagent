@@ -275,7 +275,7 @@ function bindActions() {
   bindAction("setProviderKey", "setProviderKey", "Открываю настройку ключа", currentProviderPayload);
   bindAction("setCurrentProviderKey", "setProviderKey", "Открываю настройку ключа", currentProviderPayload);
   bindAction("refreshProviderModels", "refreshProviderModels", "Обновляю модели", currentProviderPayload);
-  bindAction("testProvider", "testProvider", "Проверяю модель", currentProviderPayload);
+  bindAction("testProvider", "testProvider", "Проверяю модель", currentProviderModelPayload);
   bindAction("useProviderModel", "selectProviderModel", "Сохраняю модель", selectedProviderModelPayload);
 
   document.getElementById("saveRules")?.addEventListener("click", () => {
@@ -503,6 +503,13 @@ function currentProviderPayload() {
   };
 }
 
+function currentProviderModelPayload() {
+  return {
+    provider: currentProvider(),
+    model: selectedModelId()
+  };
+}
+
 function selectedProviderModelPayload() {
   return {
     provider: currentProvider(),
@@ -519,7 +526,7 @@ function currentProvider() {
 function selectedModelId() {
   const input = document.getElementById("providerModelInput");
   const fromVendor = state.selectedVendorModel;
-  return fromVendor || input?.value?.trim() || fallbackModelForProvider(currentProvider());
+  return fromVendor ?? input?.value?.trim() ?? "";
 }
 
 function toggleMenu(id) {
@@ -609,7 +616,7 @@ function renderComposer() {
   // ФИКС: НЕ перезаписываем providerSelect здесь — это ломает ручной выбор.
   // Синхронизация dropdown с config происходит только в syncProviderSelect()
   // при получении state-сообщения от бэкенда, а не при каждом renderComposer.
-  if (input && configuredModel && !input.matches(":focus")) {
+  if (input && !input.matches(":focus")) {
     input.value = configuredModel;
   }
   setText("modelButtonLabel", shortModelLabel(configuredModel));
@@ -716,8 +723,13 @@ function renderModelOptions() {
   const configured = currentConfiguredModel();
   el.innerHTML = "";
 
+  el.appendChild(renderAutoModelOption(configured));
+
   if (!models.length) {
-    el.innerHTML = `<div class="model-empty">Нет моделей. Нажми «Обновить модели» или впиши custom id.</div>`;
+    const empty = document.createElement("div");
+    empty.className = "model-empty";
+    empty.textContent = "Нет моделей. Нажми «Обновить модели» или впиши custom id.";
+    el.appendChild(empty);
     setText("modelCapabilities", "");
     return;
   }
@@ -787,24 +799,44 @@ function renderModelOptions() {
   renderCapabilities();
 }
 
+function renderAutoModelOption(configured) {
+  const option = document.createElement("button");
+  option.type = "button";
+  option.className = `model-option auto-option${configured ? "" : " is-selected"}`;
+  option.dataset.modelId = "";
+  option.innerHTML = `
+    <span class="model-option-radio"></span>
+    <span class="model-option-name">Auto</span>
+    <span class="model-option-meta">
+      <span class="model-category-chip cat-fast">режим сам выберет модель</span>
+    </span>
+  `;
+  option.addEventListener("click", (event) => {
+    event.stopPropagation();
+    selectVendorModel("");
+  });
+  return option;
+}
+
 function renderModelOption(model, configured, apiType) {
   // ФИКС: только configured (из config) даёт is-selected.
   // selectedVendorModel убран — иначе два огонька горят одновременно.
   const isSelected = model.id === configured;
+  const caps = model.capabilities;
+  const isDeprecated = caps?.deprecated === true;
   const option = document.createElement("button");
   option.type = "button";
-  option.className = `model-option${isSelected ? " is-selected" : ""}`;
+  option.className = `model-option${isSelected ? " is-selected" : ""}${isDeprecated ? " is-deprecated" : ""}`;
   option.dataset.modelId = model.id;
   option.dataset.apiType = apiType;
 
-  const caps = model.capabilities;
   const ctx = caps?.contextWindow;
   const cat = model.category || inferCategoryFromId(model.id);
   const price = formatNeurons(caps, apiType);
 
   option.innerHTML = `
     <span class="model-option-radio"></span>
-    <span class="model-option-name">${escapeHtml(model.label || shortModelLabel(model.id))}</span>
+    <span class="model-option-name">${escapeHtml(model.label || shortModelLabel(model.id))}${isDeprecated ? ' <span class="model-offline-badge" style="color: var(--vscode-errorForeground); font-size: 0.85em; font-weight: bold; margin-left: 4px;">[не отвечает]</span>' : ""}</span>
     <span class="model-option-meta">
       ${cat && apiType === "text" ? `<span class="model-category-chip cat-${escapeHtml(cat)}">${escapeHtml(CATEGORY_LABELS[cat] ?? cat)}</span>` : ""}
       ${ctx ? `<span class="model-context">${escapeHtml(formatContext(ctx))}</span>` : ""}
@@ -852,7 +884,7 @@ function formatNeurons(caps, apiType) {
 }
 
 function selectVendorModel(modelId) {
-  state.selectedVendorModel = modelId;
+  state.selectedVendorModel = modelId || undefined;
   const input = document.getElementById("providerModelInput");
   if (input) {
     input.value = modelId;
@@ -1187,6 +1219,9 @@ function activeModels() {
 
 function selectedModelMetadata() {
   const selected = selectedModelId();
+  if (!selected) {
+    return undefined;
+  }
   return activeModels().find((model) => model.id === selected);
 }
 
@@ -1207,8 +1242,7 @@ function defaultModelList(provider = currentProvider()) {
 }
 
 function currentConfiguredModel() {
-  const provider = state.config?.providers?.defaultProvider ?? currentProvider();
-  return state.config?.providers?.defaultModel || fallbackModelForProvider(provider);
+  return state.config?.providers?.defaultModel || "";
 }
 
 function fallbackModelForProvider(provider = "cloudflare") {

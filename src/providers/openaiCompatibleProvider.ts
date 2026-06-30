@@ -118,17 +118,7 @@ export class OpenAICompatibleProvider implements ProviderAdapter {
         return this.defaultModels;
       }
       const raw = (await response.json()) as { data?: Array<{ id: string }> };
-      const remoteModels = raw.data?.map((model) => ({
-        id: model.id,
-        label: model.id,
-        provider: this.id,
-        capabilities: {
-          vision: false,
-          tools: true,
-          jsonMode: true,
-          speed: "medium" as const
-        }
-      }));
+      const remoteModels = raw.data?.map((model) => this.modelFromRemoteId(model.id));
       return remoteModels?.length ? remoteModels : this.defaultModels;
     } catch {
       return this.defaultModels;
@@ -201,6 +191,30 @@ export class OpenAICompatibleProvider implements ProviderAdapter {
       "Accept": "application/json"
     };
   }
+
+  private modelFromRemoteId(id: string): ProviderModel {
+    const known = this.defaultModels.find((model) => model.id === id);
+    const lower = id.toLowerCase();
+    return {
+      id,
+      label: known?.label ?? id,
+      provider: this.id,
+      vendor: known?.vendor,
+      category: known?.category,
+      apiType: known?.apiType ?? "text",
+      capabilities: {
+        contextWindow: known?.capabilities.contextWindow,
+        vision: known?.capabilities.vision ?? /vision|vl|omni|gpt-4o|kimi|gemini|claude|minimax-m3/i.test(id),
+        tools: known?.capabilities.tools ?? true,
+        jsonMode: known?.capabilities.jsonMode ?? true,
+        reasoning: known?.capabilities.reasoning ?? /reason|thinking|deepseek|glm|kimi|qwen|gpt-5|qwq/i.test(lower),
+        fixedContext: known?.capabilities.fixedContext,
+        costHint: known?.capabilities.costHint,
+        codingQuality: known?.capabilities.codingQuality,
+        speed: known?.capabilities.speed ?? (/flash|mini|fast|haiku|m2/i.test(lower) ? "fast" : "medium")
+      }
+    };
+  }
 }
 
 export class ProviderRequestError extends Error {
@@ -227,7 +241,15 @@ export class ProviderRequestError extends Error {
   }
 
   public isModelNotFound(): boolean {
-    return this.status === 404 && (this.param === "model" || this.code === "NOT_FOUND");
+    return (this.status === 404 && (this.param === "model" || this.code === "NOT_FOUND"))
+      || (this.status === 410 && /model|no longer available|not available|deprecated/i.test(this.providerMessage))
+      || (this.status === 400 && /no registered providers found|model not found|unknown model|not found|not exist|no model/i.test(this.providerMessage));
+  }
+
+  public suggestedReplacementModel(): string | undefined {
+    const match = /Use\s+"([^"]+)"\s+instead/i.exec(this.providerMessage)
+      ?? /use\s+'([^']+)'\s+instead/i.exec(this.providerMessage);
+    return match?.[1]?.trim();
   }
 
   public isBillingBlocked(): boolean {

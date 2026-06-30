@@ -5,7 +5,7 @@ import type { MineAgentConfig } from "../src/config/types";
 import { ApprovalGate } from "../src/approval/approvalGate";
 import { ToolRegistry } from "../src/tools/toolRegistry";
 import { ToolDispatcher, setRequestIdGenerator } from "../src/tools/toolDispatcher";
-import { BlockbenchBridge, classifyRisk, normalizeCallResult } from "../src/mcp/blockbenchBridge";
+import { BlockbenchBridge, classifyRisk, normalizeCallResult, coerceArgsToSchema } from "../src/mcp/blockbenchBridge";
 import { clearDynamicSchemas } from "../src/tools/toolSchemas";
 import type { McpTool } from "../src/mcp/types";
 
@@ -113,6 +113,38 @@ describe("BlockbenchBridge — normalizeCallResult", () => {
     const result = normalizeCallResult({ content: [] }, "noop");
     assert.match(result.text, /пустой ответ/);
     assert.equal(result.images, undefined);
+  });
+});
+
+describe("BlockbenchBridge — coerceArgsToSchema", () => {
+  it("converts stringified Blockbench arrays/numbers using the MCP input schema", () => {
+    const args = coerceArgsToSchema(
+      {
+        rotation: "[-25,0,0]",
+        origin: "[0,14,0]",
+        uv: "[0,0]",
+        texture_width: "64",
+        name: "jaw",
+        unknown: "[1,2,3]"
+      },
+      {
+        type: "object",
+        properties: {
+          rotation: { type: "array", items: { type: "number" } },
+          origin: { type: "array", items: { type: "number" } },
+          uv: { type: "array", items: { type: "integer" } },
+          texture_width: { type: "integer" },
+          name: { type: "string" }
+        }
+      }
+    );
+
+    assert.deepEqual(args.rotation, [-25, 0, 0]);
+    assert.deepEqual(args.origin, [0, 14, 0]);
+    assert.deepEqual(args.uv, [0, 0]);
+    assert.equal(args.texture_width, 64);
+    assert.equal(args.name, "jaw");
+    assert.equal(args.unknown, "[1,2,3]");
   });
 });
 

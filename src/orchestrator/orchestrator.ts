@@ -23,10 +23,13 @@ import type { SkillMatchResult } from "../skills/types";
 import type { KnowledgeBaseService } from "../knowledge/knowledgeBase";
 import type { KnowledgeSearchResult } from "../knowledge/types";
 import type { ProjectMemoryService } from "../memory/projectMemory";
+import { EvidenceService } from "../evidence/evidenceService";
+import { PreflightProbe } from "../providers/preflightProbe";
 
 export interface RunRequest {
   prompt: string;
   mode: "ask" | "plan" | "build" | "playtest";
+  rules?: string;
   researchLedger?: ResearchLedger;
   signal?: AbortSignal;
   onActivity?: (event: RunActivityEvent) => void;
@@ -129,6 +132,7 @@ export class MineAgentOrchestrator {
   // Фаза 1: сервис живой памяти проекта (.mineagent/project.md). Если передан —
   // run() грузит память в контекст и дописывает журнал/факты после задачи.
   private readonly projectMemory?: ProjectMemoryService;
+  private readonly preflightProbe?: PreflightProbe;
 
   public constructor(
     private readonly root: string,
@@ -153,7 +157,8 @@ export class MineAgentOrchestrator {
     skillService?: SkillService,
     knowledgeBase?: KnowledgeBaseService,
     // Фаза 1: опциональный сервис памяти проекта.
-    projectMemory?: ProjectMemoryService
+    projectMemory?: ProjectMemoryService,
+    preflightProbe?: PreflightProbe
   ) {
     const list: McpBridge[] = [];
     if (blockbenchBridge) {
@@ -168,9 +173,11 @@ export class MineAgentOrchestrator {
     this.skillService = skillService;
     this.knowledgeBase = knowledgeBase;
     this.projectMemory = projectMemory;
+    this.preflightProbe = preflightProbe;
   }
 
   public async run(request: RunRequest): Promise<RunReport> {
+    const startedAt = new Date().toISOString();
     const phases = createInitialRunPhases();
     request.onActivity?.({
       status: "started",
@@ -281,12 +288,31 @@ export class MineAgentOrchestrator {
       }
     }
 
+    const runId = `run-${Date.now()}`;
+    const summary = modelOutcome?.summary ?? createRunSummary(request, projectMap);
+
+    try {
+      const evidenceService = new EvidenceService(this.root, this.config.paths.runs);
+      await evidenceService.saveRunEvidence(
+        runId,
+        request.prompt,
+        startedAt,
+        new Date().toISOString(),
+        summary,
+        projectMap,
+        modelOutcome?.toolCalls,
+        phases
+      );
+    } catch (error) {
+      console.error("Не удалось сохранить evidence запуска:", error);
+    }
+
     return {
-      id: `run-${Date.now()}`,
+      id: runId,
       prompt: request.prompt,
       phases,
       projectMap,
-      summary: modelOutcome?.summary ?? createRunSummary(request, projectMap),
+      summary,
       toolCalls: modelOutcome?.toolCalls
     };
   }
@@ -366,8 +392,27 @@ export class MineAgentOrchestrator {
     }
 
     let lastError: unknown;
-    for (const model of candidates) {
+    const tried = new Set<string>();
+    const queue = [...candidates];
+    for (let index = 0; index < queue.length; index += 1) {
+      const model = queue[index]!;
+      if (tried.has(model)) {
+        continue;
+      }
+      tried.add(model);
       try {
+        if (this.preflightProbe) {
+          request.onActivity?.({
+            phase: "Report",
+            status: "progress",
+            message: `Preflight-проверка модели ${model}…`
+          });
+          const probeResult = await this.preflightProbe.probe(provider, model, request.signal);
+          if (!probeResult.alive || !probeResult.respondsText) {
+            throw new Error(`Модель "${model}" не прошла preflight-проверку: ${probeResult.error || "Модель не ответила на тестовый запрос"}.`);
+          }
+        }
+
         request.onActivity?.({
           phase: "Report",
           status: "progress",
@@ -473,6 +518,15 @@ export class MineAgentOrchestrator {
           status: "progress",
           message: `Модель ${model} недоступна. Пробую следующий вариант из списка провайдера.`
         });
+        const replacement = error.suggestedReplacementModel();
+        if (replacement && !tried.has(replacement)) {
+          request.onActivity?.({
+            phase: "Report",
+            status: "progress",
+            message: `Провайдер предложил замену: ${replacement}. Пробую ее следующим запросом.`
+          });
+          queue.splice(index + 1, 0, replacement);
+        }
       }
     }
     throw lastError instanceof Error ? lastError : new Error(String(lastError));
@@ -1134,6 +1188,9 @@ function createChatMessages(request: RunRequest, projectMap: ProjectMap): ChatMe
     instructionsForMode(request.mode),
     "If Research Ledger is present, treat it as user-reviewed source memory. Follow userNotes and rejected/accepted source status."
   ].join("\n");
+  const workspaceRulesText = request.rules?.trim()
+    ? `\n\n## Workspace Rules (AGENTS.md)\n${request.rules.trim()}`
+    : "";
   const researchLedgerText = formatResearchLedger(request.researchLedger);
   // Фаза 1: блок памяти проекта идёт ПЕРВЫМ в пользовательском сообщении — это
   // долговременный контекст, на который модель опирается прежде всего.
@@ -1166,6 +1223,7 @@ function createChatMessages(request: RunRequest, projectMap: ProjectMap): ChatMe
         "- Если данных о проекте не хватает — задай 1-2 коротких вопроса, не пиши длинных вводных.",
         "",
         modeInstructions,
+        workspaceRulesText,
         skillsText,
         knowledgeText
       ].join("\n")

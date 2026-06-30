@@ -61,7 +61,10 @@ export class PreflightProbe {
       result = {
         modelId,
         alive: true,
-        respondsText: Boolean(response.content && response.content.trim()),
+        respondsText: Boolean(
+          (response.content && response.content.trim()) ||
+          (response.reasoningContent && response.reasoningContent.trim())
+        ),
         checkedAt: new Date().toISOString()
       };
     } catch (error) {
