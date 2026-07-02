@@ -10,6 +10,78 @@ export interface ScaffoldOptions {
   groupId?: string;
   version?: string;
   javaVersion?: string;
+  // Явная версия загрузчика (Forge/NeoForge). Если не задана — берётся из
+  // KNOWN_*_VERSIONS по minecraftVersion; для неизвестной версии scaffold
+  // бросает понятную ошибку вместо генерации заведомо битого build.gradle.
+  loaderVersion?: string;
+}
+
+// Известные (проверенные) версии загрузчиков по версии Minecraft. Раньше эти
+// значения были захардкожены в build.gradle (NeoForge 21.1.77, Forge 47.3.0) и
+// игнорировали options.minecraftVersion — скаффолд под любую другую версию MC
+// давал нерабочую/неразрешимую зависимость. Теперь версия резолвится по
+// карте проверенных значений либо по явному override.
+const KNOWN_NEOFORGE_VERSIONS: Record<string, string> = {
+  "1.21.1": "21.1.77"
+};
+
+const KNOWN_FORGE_VERSIONS: Record<string, string> = {
+  "1.20.1": "47.3.0"
+};
+
+// pack_format ресурс-пака зависит от версии Minecraft (раньше был захардкожен
+// 15 = MC 1.20.1, из-за чего ресурсы для 1.21.1 ловили предупреждение о
+// неверном формате). Значения задокументированы Mojang и стабильны.
+const RESOURCE_PACK_FORMATS: Record<string, number> = {
+  "1.20.1": 15,
+  "1.20.2": 18,
+  "1.20.3": 22,
+  "1.20.4": 22,
+  "1.20.5": 32,
+  "1.20.6": 32,
+  "1.21": 34,
+  "1.21.1": 34
+};
+
+// Резолвит версию загрузчика. Приоритет: явный override > карта проверенных
+// версий. Для неизвестной версии MC без override — понятная ошибка (fail-fast),
+// чтобы не сгенерировать build.gradle с неразрешимой зависимостью.
+export function resolveLoaderVersion(
+  loader: "forge" | "fabric" | "neoforge",
+  minecraftVersion: string,
+  override?: string
+): string {
+  if (override && override.trim()) {
+    return override.trim();
+  }
+  const map = loader === "neoforge" ? KNOWN_NEOFORGE_VERSIONS : KNOWN_FORGE_VERSIONS;
+  const known = map[minecraftVersion];
+  if (known) {
+    return known;
+  }
+  const loaderName = loader === "neoforge" ? "NeoForge" : "Forge";
+  const supported = Object.keys(map).join(", ") || "(нет)";
+  throw new Error(
+    `Scaffolder: неизвестна версия ${loaderName} для Minecraft ${minecraftVersion}. ` +
+    `Передай явный loaderVersion в опциях scaffold(). Известные версии MC: ${supported}.`
+  );
+}
+
+// pack_format по версии MC: точное совпадение → карта; иначе фоллбэк по
+// minor-ветке (1.21.x → 34, 1.20.x → 15 baseline). Неизвестная ветка → самый
+// свежий известный формат (лучше, чем заведомо устаревший хардкод).
+export function resolvePackFormat(minecraftVersion: string): number {
+  const exact = RESOURCE_PACK_FORMATS[minecraftVersion];
+  if (exact !== undefined) {
+    return exact;
+  }
+  if (minecraftVersion.startsWith("1.21")) {
+    return 34;
+  }
+  if (minecraftVersion.startsWith("1.20")) {
+    return 15;
+  }
+  return 34;
 }
 
 export class Scaffolder {
@@ -17,7 +89,14 @@ export class Scaffolder {
     const groupId = options.groupId || "com.example." + options.modId;
     const version = options.version || "1.0.0";
     const javaVersion = options.javaVersion || (options.minecraftVersion.startsWith("1.20") ? "17" : "21");
-    
+
+    // Резолвим версию загрузчика ДО создания файлов: для неизвестной версии MC
+    // это бросит понятную ошибку без частичного scaffold (fail-fast).
+    const loaderVersion = options.loader === "fabric"
+      ? undefined
+      : resolveLoaderVersion(options.loader, options.minecraftVersion, options.loaderVersion);
+    const packFormat = resolvePackFormat(options.minecraftVersion);
+
     // Создаем базовые директории
     const packagePath = groupId.replace(/\./g, "/");
     const srcDir = join(options.rootDir, "src", "main", "java", packagePath);
@@ -26,10 +105,10 @@ export class Scaffolder {
     await mkdir(resourcesDir, { recursive: true });
 
     // 1. Генерируем Gradle-файлы
-    await this.generateGradleFiles(options.rootDir, options.loader, options.minecraftVersion, options.modId, groupId, version, javaVersion);
+    await this.generateGradleFiles(options.rootDir, options.loader, options.minecraftVersion, options.modId, groupId, version, javaVersion, loaderVersion);
 
     // 2. Генерируем метаданные мода в зависимости от загрузчика
-    await this.generateModMetadata(options.rootDir, resourcesDir, options.loader, options.modId, version, groupId);
+    await this.generateModMetadata(options.rootDir, resourcesDir, options.loader, options.modId, version, groupId, packFormat);
 
     // 3. Генерируем базовый Java-класс
     await this.generateBaseClass(srcDir, options.loader, options.modId, groupId);
@@ -45,7 +124,8 @@ export class Scaffolder {
     modId: string,
     groupId: string,
     version: string,
-    javaVersion: string
+    javaVersion: string,
+    loaderVersion?: string
   ): Promise<void> {
     const settingsGradle = `rootProject.name = "${modId}"\n`;
     await writeFile(join(rootDir, "settings.gradle"), settingsGradle, "utf8");
@@ -63,7 +143,7 @@ version = "${version}"
 group = "${groupId}"
 
 neoForge {
-    version = "21.1.77" // NeoForge для MC 1.21.1
+    version = "${loaderVersion}" // NeoForge для MC ${mcVersion}
 
     runs {
         client {
@@ -135,7 +215,7 @@ repositories {
 }
 
 dependencies {
-    minecraft 'net.minecraftforge:forge:${mcVersion}-47.3.0'
+    minecraft 'net.minecraftforge:forge:${mcVersion}-${loaderVersion}'
 }
 
 java {
@@ -207,16 +287,17 @@ java_version=${javaVersion}
     loader: "forge" | "fabric" | "neoforge",
     modId: string,
     version: string,
-    groupId: string
+    groupId: string,
+    packFormat: number
   ): Promise<void> {
     const metaDir = join(resourcesDir, "META-INF");
     await mkdir(metaDir, { recursive: true });
 
-    // pack.mcmeta обязателен для ресурсов
+    // pack.mcmeta обязателен для ресурсов; pack_format зависит от версии MC.
     const packMcMeta = `{
     "pack": {
         "description": "${modId} resources",
-        "pack_format": 15
+        "pack_format": ${packFormat}
     }
 }
 `;
@@ -260,7 +341,6 @@ description="${modId} Minecraft Mod."
   ],
   "contact": {},
   "license": "MIT",
-  "icon": "assets/${modId}/icon.png",
   "environment": "*",
   "entrypoints": {
     "main": [
@@ -276,7 +356,7 @@ description="${modId} Minecraft Mod."
 }
 `;
       await writeFile(join(resourcesDir, "fabric.mod.json"), fabricModJson, "utf8");
-      
+
       // Создаем assets папку
       const assetsDir = join(resourcesDir, "assets", modId, "lang");
       await mkdir(assetsDir, { recursive: true });

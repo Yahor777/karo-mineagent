@@ -1,0 +1,14 @@
+
+> mineagent-workbench@0.1.0 test
+> npm run compile && node --test "out/test/**/*.test.js"
+
+
+> mineagent-workbench@0.1.0 compile
+> tsc -p ./
+
+▶ AnthropicProvider
+  ✔ корректно инициализирует capabilities (1.159ms)
+  ✔ вычленяет system prompt из сообщений и форматирует сообщения (0.2586ms)
+  ✔ сливает последовательные tool_result в один user-turn (1.4859ms)
+  ✔ конвертирует data URL картинки в base64 image block (0.2581ms)
+✔ AnthropicProvider (4.7066ms)

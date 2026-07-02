@@ -1,0 +1,19 @@
+▶ Scaffolder & GradleDownloader
+  ✔ успешно скаффолдит NeoForge проект (19.6376ms)
+  ✔ успешно скаффолдит Fabric проект (15.1845ms)
+  ✔ NeoForge build.gradle использует версию loader'а, соответствующую MC (13.3398ms)
+  ✔ Forge build.gradle привязывает forge-версию к запрошенной версии MC (13.6033ms)
+  ✔ явный loaderVersion переопределяет карту версий (12.1021ms)
+  ✔ scaffold падает с понятной ошибкой для неизвестной версии MC без override (1.1666ms)
+  ✔ pack_format соответствует версии Minecraft (0.1605ms)
+  ✔ pack.mcmeta пишет pack_format, соответствующий MC (1.21.1 → 34) (14.4832ms)
+  ✔ resolveLoaderVersion: карта и override (0.2606ms)
+✔ Scaffolder & GradleDownloader (91.08ms)
+ℹ tests 9
+ℹ suites 1
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 164.005

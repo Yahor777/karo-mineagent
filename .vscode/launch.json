@@ -1,0 +1,69 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run MineAgent Extension",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--disable-extension",
+        "anthropic.claude-code",
+        "--disable-extension",
+        "codium.codium",
+        "--disable-extension",
+        "kilocode.kilo-code",
+        "--disable-extension",
+        "openai.chatgpt",
+        "--disable-extension",
+        "rooveterinaryinc.roo-cline",
+        "--disable-extension",
+        "saoudrizwan.claude-dev",
+        "--extensionDevelopmentPath=${workspaceFolder}",
+        "${workspaceFolder}"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/out/**/*.js"
+      ],
+      "env": {
+        "MINEAGENT_FIREWORKS_API_KEY": "${env:MINEAGENT_FIREWORKS_API_KEY}",
+        "MINEAGENT_CLOUDFLARE_API_TOKEN": "${env:MINEAGENT_CLOUDFLARE_API_TOKEN}",
+        "CLOUDFLARE_API_TOKEN": "${env:CLOUDFLARE_API_TOKEN}",
+        "MINEAGENT_CLOUDFLARE_ACCOUNT_ID": "${env:MINEAGENT_CLOUDFLARE_ACCOUNT_ID}",
+        "CLOUDFLARE_ACCOUNT_ID": "${env:CLOUDFLARE_ACCOUNT_ID}"
+      },
+      "preLaunchTask": "npm: compile"
+    },
+    {
+      "name": "Run MineAgent Extension (kimi-jjk-lab)",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--disable-extension",
+        "anthropic.claude-code",
+        "--disable-extension",
+        "codium.codium",
+        "--disable-extension",
+        "kilocode.kilo-code",
+        "--disable-extension",
+        "openai.chatgpt",
+        "--disable-extension",
+        "rooveterinaryinc.roo-cline",
+        "--disable-extension",
+        "saoudrizwan.claude-dev",
+        "--extensionDevelopmentPath=${workspaceFolder}",
+        "${workspaceFolder}\\mod-workspaces\\kimi-jjk-lab"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/out/**/*.js"
+      ],
+      "env": {
+        "MINEAGENT_FIREWORKS_API_KEY": "${env:MINEAGENT_FIREWORKS_API_KEY}",
+        "MINEAGENT_CLOUDFLARE_API_TOKEN": "${env:MINEAGENT_CLOUDFLARE_API_TOKEN}",
+        "CLOUDFLARE_API_TOKEN": "${env:CLOUDFLARE_API_TOKEN}",
+        "MINEAGENT_CLOUDFLARE_ACCOUNT_ID": "${env:MINEAGENT_CLOUDFLARE_ACCOUNT_ID}",
+        "CLOUDFLARE_ACCOUNT_ID": "${env:CLOUDFLARE_ACCOUNT_ID}"
+      },
+      "preLaunchTask": "npm: compile"
+    }
+  ]
+}

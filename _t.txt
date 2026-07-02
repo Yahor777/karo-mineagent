@@ -1,0 +1,22 @@
+▶ VisionEvaluator (Этап 5)
+  ✔ строит multimodal ChatRequest с image_url-блоками (1.8442ms)
+  ✔ image-блок содержит data URL с base64 (0.2937ms)
+  ✔ использует visionModel из options (0.1928ms)
+  ✔ fallback на дефолтную vision-модель если visionModel не задан (0.142ms)
+  ✔ парсит JSON-вердикт модели (0.1507ms)
+  ✔ парсит JSON из markdown code block (0.1772ms)
+  ✔ fallback вердикт при невалидном JSON (0.2117ms)
+  ✔ confidence ограничивается 0..1 (0.2529ms)
+  ✔ инкрементит visionCalls в tokenBudget (0.3572ms)
+  ✔ hasImageBlocks подтверждает presence image-блоков в запросе (0.2174ms)
+  ✔ throw если images пуст (0.492ms)
+  ✔ передаёт несколько изображений в одном запросе (0.1884ms)
+✔ VisionEvaluator (Этап 5) (5.5536ms)
+ℹ tests 12
+ℹ suites 1
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 81.5994
